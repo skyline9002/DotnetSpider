@@ -1,19 +1,17 @@
 ﻿using DotnetSpider.Core;
-using DotnetSpider.Core.Selector;
-using DotnetSpider.Extension.Model;
-using DotnetSpider.Extension.Model.Attribute;
 using DotnetSpider.Extension.Pipeline;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using Xunit;
+using DotnetSpider.Extraction.Model.Attribute;
+using DotnetSpider.Extraction;
 
 namespace DotnetSpider.Extension.Test.Pipeline
 {
 	public class MySqlEntityFilePipelineTest
 	{
-		[Fact(Skip = "next")]
+		[Fact(DisplayName = "MySqlFileEntityPipeline_InsertSql", Skip = "NEXT")]
 		public void MySqlFileEntityPipeline_InsertSql()
 		{
 			var id = Guid.NewGuid().ToString("N");
@@ -43,7 +41,7 @@ namespace DotnetSpider.Extension.Test.Pipeline
 			{
 			}
 
-			protected override void MyInit(params string[] arguments)
+			protected override void OnInit(params string[] arguments)
 			{
 				EmptySleepTime = 1000;
 				var word = "可乐|雪碧";
@@ -56,7 +54,7 @@ namespace DotnetSpider.Extension.Test.Pipeline
 			[EntitySelector(Expression = ".//div[@class='result']", Type = SelectorType.XPath)]
 			class BaiduSearchEntry
 			{
-				[Field(Expression = "Keyword", Type = SelectorType.Enviroment)]
+				[FieldSelector(Expression = "Keyword", Type = SelectorType.Enviroment)]
 				public string Keyword { get; set; }
 			}
 		}

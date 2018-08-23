@@ -1,30 +1,29 @@
+using DotnetSpider.Common;
 using System.Collections.Generic;
 
 namespace DotnetSpider.Core.Pipeline
 {
 	/// <summary>
-	/// ´òÓ¡Êı¾İ½á¹ûµ½¿ØÖÆÌ¨
+	/// æ‰“å°æ•°æ®ç»“æœåˆ°æ§åˆ¶å°
 	/// </summary>
 	public class ConsolePipeline : BasePipeline
 	{
 		/// <summary>
-		/// ´òÓ¡Êı¾İ½á¹ûµ½¿ØÖÆÌ¨
+		/// æ‰“å°æ•°æ®ç»“æœåˆ°æ§åˆ¶å°
 		/// </summary>
-		/// <param name="resultItems">Êı¾İ½á¹û</param>
-		/// <param name="spider">ÅÀ³æ</param>
-		public override void Process(IEnumerable<ResultItems> resultItems, ISpider spider)
+		/// <param name="resultItems">æ•°æ®ç»“æœ</param>
+		/// <param name="logger">æ—¥å¿—æ¥å£</param>
+		/// <param name="sender">è°ƒç”¨æ–¹</param>
+		public override void Process(IList<ResultItems> resultItems, ILogger logger, dynamic sender = null)
 		{
 			foreach (var resultItem in resultItems)
 			{
-				resultItem.Request.CountOfResults = 0;
-				resultItem.Request.EffectedRows = 0;
-
 				foreach (var entry in resultItem.Results)
 				{
 					System.Console.WriteLine(entry.Key + ":\t" + entry.Value);
 
-					resultItem.Request.CountOfResults += 1;
-					resultItem.Request.EffectedRows += 1;
+					resultItem.Request.AddCountOfResults(1);
+					resultItem.Request.AddEffectedRows(1);
 				}
 			}
 		}

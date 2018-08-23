@@ -1,7 +1,7 @@
-﻿using DotnetSpider.Core.Infrastructure;
-using DotnetSpider.Core.Redial;
+﻿using DotnetSpider.Common;
+using DotnetSpider.Core.Infrastructure;
+using DotnetSpider.Downloader;
 using Polly;
-using Serilog;
 using System;
 using System.Threading;
 
@@ -12,7 +12,12 @@ namespace DotnetSpider.Core
 	/// </summary>
 	public class HttpExecuteRecord : IExecuteRecord
 	{
-		public ILogger Logger { get; set; }
+		private readonly ILogger _logger;
+
+		public HttpExecuteRecord(ILogger logger)
+		{
+			_logger = logger ?? throw new SpiderException($"{nameof(logger)} should not be null.");
+		}
 
 		/// <summary>
 		/// 添加运行记录
@@ -32,14 +37,14 @@ namespace DotnetSpider.Core
 			{
 				var retryTimesPolicy = Policy.Handle<Exception>().Retry(10, (ex, count) =>
 						{
-							Logger?.Error($"Try to add execute record failed [{count}]: {ex}", LogUtil.Identity);
+							_logger?.Error($"Try to add execute record failed [{count}]: {ex}", LogUtil.Identity);
 							Thread.Sleep(5000);
 						});
 				retryTimesPolicy.Execute(() =>
 				{
 					NetworkCenter.Current.Execute("executeRecord", () =>
 					{
-						var response = HttpSender.Client.GetAsync($"{Env.HubServiceTaskApiUrl}/{taskId}?action=increase").Result;
+						var response = DotnetSpider.Downloader.Downloader.Default.GetAsync($"{Env.HubServiceTaskApiUrl}/{taskId}?action=increase").Result;
 						response.EnsureSuccessStatusCode();
 					});
 				});
@@ -47,7 +52,7 @@ namespace DotnetSpider.Core
 			}
 			catch (Exception e)
 			{
-				Logger?.Error($"Add execute record failed: {e}", identity);
+				_logger?.Error($"Add execute record failed: {e}", identity);
 				return false;
 			}
 		}
@@ -69,21 +74,21 @@ namespace DotnetSpider.Core
 			{
 				var retryTimesPolicy = Policy.Handle<Exception>().Retry(10, (ex, count) =>
 				{
-					Logger?.Error($"Try to remove execute record failed [{count}]: {ex}", identity);
+					_logger?.Error($"Try to remove execute record failed [{count}]: {ex}", identity);
 					Thread.Sleep(5000);
 				});
 				retryTimesPolicy.Execute(() =>
 				{
 					NetworkCenter.Current.Execute("executeRecord", () =>
 					{
-						var response = HttpSender.Client.GetAsync($"{Env.HubServiceTaskApiUrl}/{taskId}?action=reduce").Result;
+						var response = DotnetSpider.Downloader.Downloader.Default.GetAsync($"{Env.HubServiceTaskApiUrl}/{taskId}?action=reduce").Result;
 						response.EnsureSuccessStatusCode();
 					});
 				});
 			}
 			catch (Exception e)
 			{
-				Logger?.Error($"Remove execute record failed: {e}", identity);
+				_logger?.Error($"Remove execute record failed: {e}", identity);
 			}
 		}
 	}

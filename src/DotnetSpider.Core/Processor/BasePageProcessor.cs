@@ -1,4 +1,6 @@
-﻿namespace DotnetSpider.Core.Processor
+﻿using DotnetSpider.Common;
+
+namespace DotnetSpider.Core.Processor
 {
 	/// <summary>
 	/// 页面解析器、抽取器的抽象
@@ -8,7 +10,12 @@
 		/// <summary>
 		/// 目标链接的解析器、抽取器
 		/// </summary>
-		public ITargetUrlsExtractor TargetUrlsExtractor { get; set; }
+		public ITargetRequestExtractor TargetUrlsExtractor { get; set; }
+
+		/// <summary>
+		/// 去掉链接#后面的所有内容
+		/// </summary>
+		public bool CleanPound { get; set; }
 
 		/// <summary>
 		/// 解析操作
@@ -20,9 +27,13 @@
 		/// 解析数据结果, 解析目标链接
 		/// </summary>
 		/// <param name="page">页面数据</param>
-		/// <param name="spider">爬虫</param>
-		public void Process(Page page, ISpider spider)
+		/// <param name="logger">日志接口</param>
+		public void Process(Page page, ILogger logger)
 		{
+			var properties = page.Selectable().Properties;
+			properties[Env.UrlPropertyKey] = page.Request.Url;
+			properties[Env.TargetUrlPropertyKey] = page.TargetUrl;
+
 			if (TargetUrlsExtractor != null)
 			{
 				bool isTarget = true;
@@ -30,7 +41,7 @@
 				{
 					foreach (var regex in TargetUrlsExtractor.TargetUrlPatterns)
 					{
-						isTarget = regex.IsMatch(page.Url);
+						isTarget = regex.IsMatch(page.Request.Url);
 						if (isTarget)
 						{
 							break;
@@ -47,9 +58,9 @@
 			Handle(page);
 
 			// IAfterDownloaderHandler中可以实现解析, 有可能不再需要解析了
-			if (!page.SkipExtractTargetUrls && TargetUrlsExtractor != null)
+			if (!page.SkipExtractedTargetRequests && TargetUrlsExtractor != null)
 			{
-				ExtractUrls(page, spider);
+				ExtractUrls(page);
 			}
 		}
 
@@ -57,14 +68,17 @@
 		/// 解析目标链接并添加到Page对象中, 供Spider对象添加到对列中
 		/// </summary>
 		/// <param name="page">页面数据</param>
-		/// <param name="spider">爬虫对象</param>
-		protected virtual void ExtractUrls(Page page, ISpider spider)
+		protected virtual void ExtractUrls(Page page)
 		{
-			var links = TargetUrlsExtractor.ExtractRequests(page, spider.Site);
+			var links = TargetUrlsExtractor.ExtractRequests(page);
 			if (links != null)
 			{
 				foreach (var link in links)
 				{
+					if (CleanPound)
+					{
+						link.Url = link.Url.Split('#')[0];
+					}
 					page.AddTargetRequest(link);
 				}
 			}

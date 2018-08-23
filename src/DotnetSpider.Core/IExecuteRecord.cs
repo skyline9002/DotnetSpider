@@ -1,6 +1,4 @@
-﻿using Serilog;
-
-namespace DotnetSpider.Core
+﻿namespace DotnetSpider.Core
 {
 	/// <summary>
 	/// 运行记录接口
@@ -8,8 +6,6 @@ namespace DotnetSpider.Core
 	/// </summary>
 	public interface IExecuteRecord
 	{
-		ILogger Logger { get; set; }
-
 		/// <summary>
 		/// 添加运行记录
 		/// </summary>

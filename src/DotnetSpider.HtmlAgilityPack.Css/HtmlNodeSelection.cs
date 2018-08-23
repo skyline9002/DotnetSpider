@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using HtmlAgilityPack;
 
-namespace DotnetSpider.HtmlAgilityPack
+namespace DotnetSpider.HtmlAgilityPack.Css
 {
     /// <summary>
     /// Selector API for <see cref="HtmlNode"/>.
@@ -58,14 +58,8 @@ namespace DotnetSpider.HtmlAgilityPack
         /// </summary>
         public static int CacheSize
         {
-            get
-            {
-                return  _compilerCache.Capacity;
-            }
-            set
-            {
-                _compilerCache.Capacity = value;   
-            }
+            get => _compilerCache.Capacity;
+            set => _compilerCache.Capacity = value;
         }
 
         /// <summary>

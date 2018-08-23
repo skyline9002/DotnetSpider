@@ -3,7 +3,6 @@ using Xunit;
 
 namespace DotnetSpider.Core.Test
 {
-
 	public class ResultItemsTest
 	{
 		public class A
@@ -11,7 +10,7 @@ namespace DotnetSpider.Core.Test
 			public string Name { get; set; }
 		}
 
-		[Fact]
+		[Fact(DisplayName = "ResultItems_AddOrUpdateOrGet")]
 		public void AddOrUpdateOrGet()
 		{
 			ResultItems resultItems = new ResultItems();
@@ -27,7 +26,7 @@ namespace DotnetSpider.Core.Test
 			Assert.Equal("test", resultItems.GetResultItem("e").Name);
 		}
 
-		[Fact]
+		[Fact(DisplayName = "ResultItems_AddOrUpdateOrGetAsync")]
 		public void AddOrUpdateOrGetAsync()
 		{
 			ResultItems resultItems = new ResultItems();

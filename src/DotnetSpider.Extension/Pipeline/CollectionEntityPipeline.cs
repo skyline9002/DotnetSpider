@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using DotnetSpider.Core;
-using DotnetSpider.Extension.Model;
+using DotnetSpider.Common;
+using DotnetSpider.Extraction.Model;
 
 namespace DotnetSpider.Extension.Pipeline
 {
@@ -18,7 +18,7 @@ namespace DotnetSpider.Extension.Pipeline
 		/// </summary>
 		/// <param name="modeIdentity">爬虫实体名称</param>
 		/// <returns>实体数据</returns>
-		public IEnumerable<dynamic> GetCollection(string modeIdentity)
+		public IList<dynamic> GetCollection(string modeIdentity)
 		{
 			lock (_locker)
 			{
@@ -27,18 +27,25 @@ namespace DotnetSpider.Extension.Pipeline
 					return result;
 				}
 			}
+
 			return null;
 		}
 
 		/// <summary>
 		/// 存储页面解析器解析到的数据结果到内存中
 		/// </summary>
-		/// <param name="entityName">爬虫实体类的名称</param>
-		/// <param name="datas">实体类数据</param>
-		/// <param name="spider">爬虫</param>
+		/// <param name="model">数据模型</param>
+		/// <param name="datas">数据</param>
+		/// <param name="logger">日志接口</param>
+		/// <param name="sender">调用方</param>
 		/// <returns>最终影响结果数量(如数据库影响行数)</returns>
-		protected override int Process(IModel model, IEnumerable<dynamic> datas, ISpider spider)
+		protected override int Process(IModel model, IList<dynamic> datas, ILogger logger, dynamic sender = null)
 		{
+			if (datas == null|| datas.Count == 0)
+			{
+				return 0;
+			}
+
 			lock (_locker)
 			{
 				if (_collector.ContainsKey(model.Identity))
@@ -52,7 +59,8 @@ namespace DotnetSpider.Extension.Pipeline
 					list.AddRange(datas);
 					_collector.Add(model.Identity, list);
 				}
-				return datas.Count();
+
+				return datas.Count;
 			}
 		}
 	}

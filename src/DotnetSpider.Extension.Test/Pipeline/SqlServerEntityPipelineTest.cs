@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
 using DotnetSpider.Core;
-using DotnetSpider.Core.Selector;
-using DotnetSpider.Extension.Model;
-using DotnetSpider.Extension.Model.Attribute;
 using DotnetSpider.Extension.Pipeline;
 using Xunit;
 using Dapper;
 using DotnetSpider.Extension.Processor;
 using System.Data;
+using DotnetSpider.Extraction.Model.Attribute;
+using DotnetSpider.Common;
+using DotnetSpider.Extraction.Model;
 #if NETSTANDARD
 using System.Runtime.InteropServices;
 #endif
@@ -56,7 +56,7 @@ namespace DotnetSpider.Extension.Test.Pipeline
 				var pipeline = new SqlServerEntityPipeline("Server=.\\SQLEXPRESS;Database=master;Trusted_Connection=True;MultipleActiveResultSets=true");
 				var resultItems = new ResultItems();
 				resultItems.Request = new Request();
-				resultItems.AddOrUpdateResultItem(processor.Model.Identity, new Tuple<IModel, IEnumerable<dynamic>>(processor.Model, new dynamic[] {
+				resultItems.AddOrUpdateResultItem(processor.Model.Identity, new Tuple<IModel, IList<dynamic>>(processor.Model, new dynamic[] {
 					new Dictionary<string, dynamic>
 					{
 						{ "int", "1"},
@@ -71,7 +71,7 @@ namespace DotnetSpider.Extension.Test.Pipeline
 						{ "decimal", "1"}
 					}
 				}));
-				pipeline.Process(new ResultItems[] { resultItems }, spider);
+				pipeline.Process(new ResultItems[] { resultItems }, spider.Logger, spider);
 
 				var columns = conn.Query<ColumnInfo>("USE [test];select  b.name Name,c.name+'(' + cast(c.length as varchar)+')' [Type] from sysobjects a,syscolumns b,systypes c where a.id=b.id and a.name='table15' and a.xtype='U'and b.xtype=c.xtype").ToList();
 				Assert.Equal(15, columns.Count);
@@ -199,34 +199,34 @@ namespace DotnetSpider.Extension.Test.Pipeline
 		[TableInfo("test", "table15")]
 		private class Entity15
 		{
-			[Field(Expression = "Url")]
+			[FieldSelector(Expression = "Url")]
 			public int Int { get; set; }
 
-			[Field(Expression = "Url")]
+			[FieldSelector(Expression = "Url")]
 			public bool Bool { get; set; }
 
-			[Field(Expression = "Url")]
+			[FieldSelector(Expression = "Url")]
 			public long BigInt { get; set; }
 
-			[Field(Expression = "Url")]
+			[FieldSelector(Expression = "Url")]
 			public string String { get; set; }
 
-			[Field(Expression = "Url")]
+			[FieldSelector(Expression = "Url")]
 			public DateTime Time { get; set; }
 
-			[Field(Expression = "Url")]
+			[FieldSelector(Expression = "Url")]
 			public float Float { get; set; }
 
-			[Field(Expression = "Url")]
+			[FieldSelector(Expression = "Url")]
 			public double Double { get; set; }
 
-			[Field(Expression = "Url", Length = 100)]
+			[FieldSelector(Expression = "Url", Length = 100)]
 			public string String1 { get; set; }
 
-			[Field(Expression = "Url", Length = 0)]
+			[FieldSelector(Expression = "Url", Length = 0)]
 			public string String2 { get; set; }
 
-			[Field(Expression = "Url")]
+			[FieldSelector(Expression = "Url")]
 			public decimal Decimal { get; set; }
 		}
 	}

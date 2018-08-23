@@ -1,3 +1,4 @@
+using DotnetSpider.Common;
 using DotnetSpider.Core.Infrastructure;
 
 namespace DotnetSpider.Core.Scheduler.Component
@@ -19,19 +20,19 @@ namespace DotnetSpider.Core.Scheduler.Component
 		public long TotalRequestsCount => _counter.Value;
 
 		/// <summary>
-		/// ¹¹Ôì·½·¨
+		/// æ„é€ æ–¹æ³•
 		/// </summary>
-		/// <param name="expectedNumberOfElements">ÔªËØ¸öÊı</param>
+		/// <param name="expectedNumberOfElements">å…ƒç´ ä¸ªæ•°</param>
 		public BloomFilterDuplicateRemover(int expectedNumberOfElements)
 			: this(0.01, expectedNumberOfElements)
 		{
 		}
 
 		/// <summary>
-		/// ¹¹Ôì·½·¨
+		/// æ„é€ æ–¹æ³•
 		/// </summary>
-		/// <param name="falsePositiveProbability">ÎóÅĞ»úÂÊ</param>
-		/// <param name="expectedInsertions">ÔªËØ¸öÊı</param>
+		/// <param name="falsePositiveProbability">è¯¯åˆ¤æœºç‡</param>
+		/// <param name="expectedInsertions">å…ƒç´ ä¸ªæ•°</param>
 		public BloomFilterDuplicateRemover(double falsePositiveProbability, int expectedInsertions)
 		{
 			_expectedInsertions = expectedInsertions;

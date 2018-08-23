@@ -1,10 +1,12 @@
 ﻿using System.Collections.Generic;
 using DotnetSpider.Core;
 using DotnetSpider.Core.Processor;
-using DotnetSpider.Extension.Model;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System;
+using DotnetSpider.Extraction.Model;
+using DotnetSpider.Extension.Model;
+using DotnetSpider.Core.Processor.TargetRequestExtractors;
 
 namespace DotnetSpider.Extension.Processor
 {
@@ -20,16 +22,7 @@ namespace DotnetSpider.Extension.Processor
 		/// <summary>
 		/// 爬虫实体类的定义
 		/// </summary>
-		public IModel Model { get; private set; }
-
-		void AddDataHanlder(IDataHandler handler)
-		{
-			if (handler == null)
-			{
-				throw new SpiderException("Datahandler should not be null.");
-			}
-			_dataHandlers.Add(handler);
-		}
+		public IModel Model { get; }
 
 		public ModelProcessor(IModel model) : this(model, null)
 		{
@@ -38,38 +31,41 @@ namespace DotnetSpider.Extension.Processor
 		/// <summary>
 		/// 构造方法
 		/// </summary>
-		/// <param name="extractor">爬虫实体的解析器</param>
-		/// <param name="targetUrlsExtractor">目标链接的解析、筛选器</param>
-		/// <param name="dataHandler">对解析的结果进一步加工操作</param>
-		/// <param name="tableName">实体在数据库中的表名, 此优先级高于EntitySelector中的定义</param>
-		public ModelProcessor(IModel model, IModelExtractor extractor = null, ITargetUrlsExtractor targetUrlsExtractor = null, params IDataHandler[] dataHandlers)
+		/// <param name="model">数据模型</param>
+		/// <param name="extractor">模型解析器</param>
+		/// <param name="targetRequestExtractor">目标链接的解析器</param>
+		/// <param name="dataHandlers">数据处理器</param>
+		public ModelProcessor(IModel model, IModelExtractor extractor = null, ITargetRequestExtractor targetRequestExtractor = null,
+			params IDataHandler[] dataHandlers)
 		{
-			Model = model ?? throw new ArgumentNullException($"{nameof(model)} should not be null.");
+			Model = model ?? throw new ArgumentNullException(nameof(model));
 
 			Extractor = extractor ?? new ModelExtractor();
 
-			if (targetUrlsExtractor != null)
+			if (targetRequestExtractor != null)
 			{
-				TargetUrlsExtractor = targetUrlsExtractor;
+				TargetUrlsExtractor = targetRequestExtractor;
 			}
 
-			RegionAndPatternTargetUrlsExtractor regionAndPatternTargetUrlsExtractor;
+			RegionAndPatternTargetRequestExtractor regionAndPatternTargetUrlsExtractor;
 			if (TargetUrlsExtractor == null)
 			{
-				regionAndPatternTargetUrlsExtractor = new RegionAndPatternTargetUrlsExtractor();
+				regionAndPatternTargetUrlsExtractor = new RegionAndPatternTargetRequestExtractor();
 				TargetUrlsExtractor = regionAndPatternTargetUrlsExtractor;
 			}
 			else
 			{
-				regionAndPatternTargetUrlsExtractor = TargetUrlsExtractor as RegionAndPatternTargetUrlsExtractor;
+				regionAndPatternTargetUrlsExtractor = TargetUrlsExtractor as RegionAndPatternTargetRequestExtractor;
 			}
+
 			if (regionAndPatternTargetUrlsExtractor == null)
 			{
 				return;
 			}
-			if (Model.TargetUrlsSelectors != null && Model.TargetUrlsSelectors.Count() > 0)
+
+			if (Model.TargetRequestSelectors != null && Model.TargetRequestSelectors.Any())
 			{
-				foreach (var targetUrlsSelector in Model.TargetUrlsSelectors)
+				foreach (var targetUrlsSelector in Model.TargetRequestSelectors)
 				{
 					var patterns = targetUrlsSelector.Patterns?.Select(x => x?.Trim()).Distinct().ToArray();
 					var xpaths = targetUrlsSelector.XPaths?.Select(x => x?.Trim()).Distinct().ToList();
@@ -77,6 +73,7 @@ namespace DotnetSpider.Extension.Processor
 					{
 						throw new SpiderException("Region xpath and patterns should not be null both");
 					}
+
 					if (xpaths != null && xpaths.Count > 0)
 					{
 						foreach (var xpath in xpaths)
@@ -90,6 +87,11 @@ namespace DotnetSpider.Extension.Processor
 						{
 							regionAndPatternTargetUrlsExtractor.AddTargetUrlExtractor(null, patterns);
 						}
+					}
+
+					foreach (var p in targetUrlsSelector.ExcludePatterns)
+					{
+						regionAndPatternTargetUrlsExtractor.ExcludeTargetUrlPatterns.Add(new Regex(p));
 					}
 				}
 			}
@@ -106,6 +108,16 @@ namespace DotnetSpider.Extension.Processor
 			}
 		}
 
+		public void AddDataHanlder(IDataHandler handler)
+		{
+			if (handler == null)
+			{
+				throw new SpiderException("Datahandler should not be null.");
+			}
+
+			_dataHandlers.Add(handler);
+		}
+
 		/// <summary>
 		/// Only used for test
 		/// </summary>
@@ -113,7 +125,7 @@ namespace DotnetSpider.Extension.Processor
 		/// <returns></returns>
 		internal virtual bool ContainsTargetUrlRegion(string region)
 		{
-			return (TargetUrlsExtractor as RegionAndPatternTargetUrlsExtractor).ContainsTargetUrlRegion(region);
+			return ((RegionAndPatternTargetRequestExtractor)TargetUrlsExtractor).ContainsTargetUrlRegion(region);
 		}
 
 		/// <summary>
@@ -123,7 +135,7 @@ namespace DotnetSpider.Extension.Processor
 		/// <returns></returns>
 		internal virtual List<Regex> GetTargetUrlPatterns(string region)
 		{
-			return (TargetUrlsExtractor as RegionAndPatternTargetUrlsExtractor).GetTargetUrlPatterns(region);
+			return (TargetUrlsExtractor as RegionAndPatternTargetRequestExtractor)?.GetTargetUrlPatterns(region);
 		}
 
 		/// <summary>
@@ -132,24 +144,25 @@ namespace DotnetSpider.Extension.Processor
 		/// <param name="page">页面数据</param>
 		protected override void Handle(Page page)
 		{
-			var datas = Extractor.Extract(page, Model);
+			var datas = Extractor.Extract(page.Selectable(), Model);
 
-			if (datas == null || datas.Count() == 0)
+			if (datas == null)
 			{
 				return;
 			}
 
+			var items = datas.ToList();
+
 			foreach (var handler in _dataHandlers)
 			{
-				for (int i = 0; i < datas.Count(); ++i)
+				for (int i = 0; i < items.Count; ++i)
 				{
-					dynamic data = datas.ElementAt(i);
+					dynamic data = items.ElementAt(i);
 					handler.Handle(ref data, page);
 				}
 			}
 
-			page.AddResultItem(Model.Identity, new Tuple<IModel, IEnumerable<dynamic>>(Model, datas));
+			page.AddResultItem(Model.Identity, new Tuple<IModel, IList<dynamic>>(Model, items));
 		}
 	}
-
 }

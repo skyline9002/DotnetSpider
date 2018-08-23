@@ -5,7 +5,8 @@ using DotnetSpider.Core;
 using System.Linq;
 using MySql.Data.MySqlClient;
 using System.Runtime.CompilerServices;
-using DotnetSpider.Extension.Model;
+using DotnetSpider.Extraction.Model;
+using DotnetSpider.Common;
 
 namespace DotnetSpider.Extension.Pipeline
 {
@@ -27,6 +28,7 @@ namespace DotnetSpider.Extension.Pipeline
 			/// LOAD
 			/// </summary>
 			LoadFile,
+
 			/// <summary>
 			/// INSERT SQL语句
 			/// </summary>
@@ -48,17 +50,24 @@ namespace DotnetSpider.Extension.Pipeline
 		/// <summary>
 		/// 处理爬虫实体解析器解析到的实体数据结果
 		/// </summary>
-		/// <param name="entityName">爬虫实体类的名称</param>
-		/// <param name="datas">实体类数据</param>
-		/// <param name="spider">爬虫</param>
+		/// <param name="model">数据模型</param>
+		/// <param name="datas">数据</param>
+		/// <param name="logger">日志接口</param>
+		/// <param name="sender">调用方</param>
 		/// <returns>最终影响结果数量(如数据库影响行数)</returns>
 		[MethodImpl(MethodImplOptions.Synchronized)]
-		protected override int Process(IModel model, IEnumerable<dynamic> datas, ISpider spider)
+		protected override int Process(IModel model, IList<dynamic> datas, ILogger logger, dynamic sender = null)
 		{
+			if (datas == null || datas.Count == 0)
+			{
+				return 0;
+			}
+
 			StreamWriter writer;
-			var tableName = model.TableInfo.FullName;
-			var dataFolder = Path.Combine(Env.BaseDirectory, "mysql", spider.Identity);
-			var mysqlFile = Path.Combine(dataFolder, $"{model.TableInfo.Database}.{tableName}.sql");
+			var tableName = model.Table.FullName;
+			var identity = GetIdentity(sender);
+			var dataFolder = Path.Combine(Env.BaseDirectory, "mysql", identity);
+			var mysqlFile = Path.Combine(dataFolder, $"{model.Table.Database}.{tableName}.sql");
 			if (_writers.ContainsKey(mysqlFile))
 			{
 				writer = _writers[mysqlFile];
@@ -69,9 +78,11 @@ namespace DotnetSpider.Extension.Pipeline
 				{
 					Directory.CreateDirectory(dataFolder);
 				}
+
 				writer = new StreamWriter(File.OpenWrite(mysqlFile), Encoding.UTF8);
 				_writers.Add(mysqlFile, writer);
 			}
+
 			switch (_type)
 			{
 				case FileType.LoadFile:
@@ -85,7 +96,8 @@ namespace DotnetSpider.Extension.Pipeline
 						break;
 					}
 			}
-			return datas.Count();
+
+			return datas.Count;
 		}
 
 		/// <summary>
@@ -107,22 +119,25 @@ namespace DotnetSpider.Extension.Pipeline
 			foreach (var item in items)
 			{
 				//{Environment.NewLine}
-				builder.Append($"INSERT IGNORE INTO `{model.TableInfo.Database}`.`{model.TableInfo.FullName}` (");
+				builder.Append($"INSERT IGNORE INTO `{model.Table.Database}`.`{model.Table.FullName}` (");
 				var lastColumn = model.Fields.Last();
 				foreach (var column in model.Fields)
 				{
-					builder.Append(column == lastColumn ? $"`{column.Name}`" : $"`{column.Name}`, ");
+					builder.Append(column.Equals(lastColumn) ? $"`{column.Name}`" : $"`{column.Name}`, ");
 				}
+
 				builder.Append(") VALUES (");
 
 				foreach (var column in model.Fields)
 				{
 					var value = item[column.Name];
 					value = value == null ? "" : MySqlHelper.EscapeString(value.ToString());
-					builder.Append(column == lastColumn ? $"'{value}'" : $"'{value}', ");
+					builder.Append(column.Equals(lastColumn) ? $"'{value}'" : $"'{value}', ");
 				}
+
 				builder.Append($");{System.Environment.NewLine}");
 			}
+
 			writer.Write(builder.ToString());
 		}
 
@@ -145,6 +160,7 @@ namespace DotnetSpider.Extension.Pipeline
 					}
 				}
 			}
+
 			writer.Write(builder.ToString());
 		}
 	}

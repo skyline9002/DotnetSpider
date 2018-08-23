@@ -4,13 +4,13 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 
-namespace DotnetSpider.HtmlAgilityPack
+namespace DotnetSpider.HtmlAgilityPack.Css
 {
     #region Imports
 
+	
 
-
-    #endregion
+	#endregion
 
     /// <summary>
     /// An <see cref="IElementOps{TElement}"/> implementation for <see cref="HtmlNode"/>
@@ -408,14 +408,6 @@ namespace DotnetSpider.HtmlAgilityPack
             {
                 var last = nodes.LastOrDefault();
                 return last != null ? new[] { last } : Enumerable.Empty<HtmlNode>();
-            };
-        }
-        public Selector<HtmlNode> First()
-        {
-            return nodes =>
-            {
-                var first = nodes.FirstOrDefault();
-                return first != null ? new[] { first } : Enumerable.Empty<HtmlNode>();
             };
         }
 

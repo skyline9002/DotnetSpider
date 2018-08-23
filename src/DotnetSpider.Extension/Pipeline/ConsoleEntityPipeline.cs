@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using DotnetSpider.Extension.Model;
 using System.Linq;
-using DotnetSpider.Core;
 using Newtonsoft.Json;
+using DotnetSpider.Extraction.Model;
+using DotnetSpider.Common;
 
 namespace DotnetSpider.Extension.Pipeline
 {
@@ -14,19 +14,25 @@ namespace DotnetSpider.Extension.Pipeline
 	public class ConsoleEntityPipeline : ModelPipeline
 	{
 		/// <summary>
-		/// ´òÓ¡ÅÀ³æÊµÌå½âÎöÆ÷½âÎöµ½µÄÊµÌåÊı¾İ½á¹ûµ½¿ØÖÆÌ¨
+		/// æ‰“å°çˆ¬è™«å®ä½“è§£æå™¨è§£æåˆ°çš„å®ä½“æ•°æ®ç»“æœåˆ°æ§åˆ¶å°
 		/// </summary>
-		/// <param name="model">ÅÀ³æÊµÌåÀàµÄÃû³Æ</param>
-		/// <param name="datas">ÊµÌåÀàÊı¾İ</param>
-		/// <param name="spider">ÅÀ³æ</param>
-		/// <returns>×îÖÕÓ°Ïì½á¹ûÊıÁ¿(ÈçÊı¾İ¿âÓ°ÏìĞĞÊı)</returns>
-		protected override int Process(IModel model, IEnumerable<dynamic> datas, ISpider spider)
+		/// <param name="model">çˆ¬è™«å®ä½“ç±»çš„åç§°</param>
+		/// <param name="datas">å®ä½“ç±»æ•°æ®</param>
+		/// <param name="logger">æ—¥å¿—æ¥å£</param>
+		/// <param name="sender">è°ƒç”¨æ–¹</param>
+		/// <returns>æœ€ç»ˆå½±å“ç»“æœæ•°é‡(å¦‚æ•°æ®åº“å½±å“è¡Œæ•°)</returns>
+		protected override int Process(IModel model, IList<dynamic> datas, ILogger logger, dynamic sender = null)
 		{
+			if (datas == null || datas.Count == 0)
+			{
+				return 0;
+			}
+
 			foreach (var data in datas)
 			{
-				Console.WriteLine($"{model.Identity}: {JsonConvert.SerializeObject(data)}");
+				Console.WriteLine($"Store: {JsonConvert.SerializeObject(data)}");
 			}
-			return datas.Count();
+			return datas.Count;
 		}
 	}
 }

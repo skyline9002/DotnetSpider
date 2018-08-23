@@ -2,8 +2,9 @@
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using DotnetSpider.Common;
 using DotnetSpider.Core;
-using DotnetSpider.Extension.Model;
+using DotnetSpider.Extraction.Model;
 using OfficeOpenXml;
 
 namespace DotnetSpider.Extension.Pipeline
@@ -46,20 +47,22 @@ namespace DotnetSpider.Extension.Pipeline
 				{
 					File.Delete(path);
 				}
+
 				package.Value.SaveAs(new FileInfo(path));
 			}
 		}
 
-		private void WriteToExcel(IModel model, IEnumerable<dynamic> datas, ISpider spider)
+		private void WriteToExcel(IModel model, IList<dynamic> datas, dynamic sender)
 		{
-			var excelPath = Path.Combine(Env.BaseDirectory, "excels", $"{spider.Name}_{spider.Identity}.xlsx");
-			var sheetName = model.TableInfo.Name;
+			var excelPath = Path.Combine(Env.BaseDirectory, "excels", $"{sender.Name}_{sender.Identity}.xlsx");
+			var sheetName = model.Table.Name;
 			var sheetIndex = $"{excelPath}.{sheetName}";
 
 			if (!_packages.ContainsKey(excelPath))
 			{
 				_packages.Add(excelPath, new ExcelPackage());
 			}
+
 			if (!_rowRecords.ContainsKey(sheetIndex))
 			{
 				_rowRecords.Add(sheetIndex, 1);
@@ -78,9 +81,9 @@ namespace DotnetSpider.Extension.Pipeline
 
 				for (int i = 1; i < columns.Count + 1; ++i)
 				{
-					var column = columns[i - 1];
 					sheet.Cells[1, i].Value = columns[i - 1].Name.ToLower();
 				}
+
 				row = IncreaseRowIndex(sheetIndex);
 			}
 
@@ -91,6 +94,7 @@ namespace DotnetSpider.Extension.Pipeline
 					var column = columns[j - 1].Name;
 					sheet.Cells[row, j].Value = data[column];
 				}
+
 				row = IncreaseRowIndex(sheetIndex);
 			}
 		}
@@ -105,16 +109,21 @@ namespace DotnetSpider.Extension.Pipeline
 		/// <summary>
 		/// 把解析到的爬虫实体数据存到Excel中
 		/// </summary>
-		/// <param name="entityName">爬虫实体类的名称</param>
-		/// <param name="datas">实体类数据</param>
-		/// <param name="spider">爬虫</param>
+		/// <param name="model">数据模型</param>
+		/// <param name="datas">数据</param>
+		/// <param name="logger">日志接口</param>
+		/// <param name="sender">调用方</param>
 		/// <returns>最终影响结果数量(如数据库影响行数)</returns>
 		[MethodImpl(MethodImplOptions.Synchronized)]
-		protected override int Process(IModel model, IEnumerable<dynamic> datas, ISpider spider)
+		protected override int Process(IModel model, IList<dynamic> datas, ILogger logger, dynamic sender = null)
 		{
-			var count = datas.Count();
-			WriteToExcel(model, datas, spider);
-			return count;
+			if (datas == null || datas.Count == 0)
+			{
+				return 0;
+			}
+
+			WriteToExcel(model, datas, sender);
+			return datas.Count;
 		}
 	}
 }

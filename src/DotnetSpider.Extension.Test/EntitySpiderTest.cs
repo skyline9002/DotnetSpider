@@ -1,12 +1,6 @@
 ﻿using DotnetSpider.Core;
-using DotnetSpider.Core.Infrastructure;
 using DotnetSpider.Core.Monitor;
-using DotnetSpider.Core.Selector;
-using DotnetSpider.Extension.Model;
-using DotnetSpider.Extension.Model.Attribute;
-using DotnetSpider.Extension.Model.Formatter;
 using DotnetSpider.Extension.Pipeline;
-using DotnetSpider.Extension.Scheduler;
 using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
@@ -14,6 +8,11 @@ using System.Configuration;
 using System.Net;
 using Xunit;
 using System.Linq;
+using DotnetSpider.Extraction.Model.Attribute;
+using DotnetSpider.Common;
+using DotnetSpider.Extraction;
+using DotnetSpider.Extraction.Model.Formatter;
+using DotnetSpider.Extraction.Model;
 
 namespace DotnetSpider.Extension.Test
 {
@@ -90,7 +89,7 @@ namespace DotnetSpider.Extension.Test
 			var redis = ConnectionMultiplexer.Connect(confiruation);
 			var db = redis.GetDatabase(0);
 
-			var md5 = CryptoUtil.Md5Encrypt(spider.Identity);
+			var md5 = Cryptography.ToShortMd5(spider.Identity);
 			var itemKey = "item-" + md5;
 			var setKey = "set-" + md5;
 			var queueKey = "queue-" + md5;
@@ -136,7 +135,7 @@ namespace DotnetSpider.Extension.Test
 		[TableInfo("test", "table")]
 		private class TestEntity
 		{
-			[Field(Expression = ".")]
+			[FieldSelector(Expression = ".")]
 			public string Name { get; set; }
 		}
 
@@ -146,11 +145,11 @@ namespace DotnetSpider.Extension.Test
 			{
 			}
 
-			protected override void MyInit(params string[] arguments)
+			protected override void OnInit(params string[] arguments)
 			{
 				Monitor = new LogMonitor();
 				Identity = Guid.NewGuid().ToString("N");
-				Scheduler = new RedisScheduler("127.0.0.1:6379,serviceName=Scheduler.NET,keepAlive=8,allowAdmin=True,connectTimeout=10000,password=,abortConnect=True,connectRetry=20");
+				//Scheduler = new RedisScheduler("127.0.0.1:6379,serviceName=Scheduler.NET,keepAlive=8,allowAdmin=True,connectTimeout=10000,password=,abortConnect=True,connectRetry=20");
 				AddStartUrl("https://baidu.com");
 				AddPipeline(new ConsoleEntityPipeline());
 				AddEntityType<TestEntity>();
@@ -166,7 +165,7 @@ namespace DotnetSpider.Extension.Test
 				_guid = guid;
 			}
 
-			protected override void MyInit(params string[] arguments)
+			protected override void OnInit(params string[] arguments)
 			{
 				var word = "可乐|雪碧";
 				AddStartUrl(string.Format("http://news.baidu.com/ns?word={0}&tn=news&from=news&cl=2&pn=0&rn=20&ct=1", word),
@@ -181,36 +180,36 @@ namespace DotnetSpider.Extension.Test
 			[EntitySelector(Expression = ".//div[@class='result']", Type = SelectorType.XPath)]
 			class BaiduSearchEntry
 			{
-				[Field(Expression = "Keyword", Type = SelectorType.Enviroment, Length = 100)]
+				[FieldSelector(Expression = "Keyword", Type = SelectorType.Enviroment, Length = 100)]
 				public string Keyword { get; set; }
 
-				[Field(Expression = "guid", Type = SelectorType.Enviroment, Length = 100)]
+				[FieldSelector(Expression = "guid", Type = SelectorType.Enviroment, Length = 100)]
 				public string Guid { get; set; }
 
-				[Field(Expression = ".//h3[@class='c-title']/a")]
+				[FieldSelector(Expression = ".//h3[@class='c-title']/a")]
 				[ReplaceFormatter(NewValue = "", OldValue = "<em>")]
 				[ReplaceFormatter(NewValue = "", OldValue = "</em>")]
 				public string Title { get; set; }
 
-				[Field(Expression = ".//h3[@class='c-title']/a/@href")]
+				[FieldSelector(Expression = ".//h3[@class='c-title']/a/@href")]
 				public string Url { get; set; }
 
-				[Field(Expression = ".//div/p[@class='c-author']/text()")]
+				[FieldSelector(Expression = ".//div/p[@class='c-author']/text()")]
 				[ReplaceFormatter(NewValue = "-", OldValue = "&nbsp;")]
 				public string Website { get; set; }
 
 
-				[Field(Expression = ".//div/span/a[@class='c-cache']/@href")]
+				[FieldSelector(Expression = ".//div/span/a[@class='c-cache']/@href")]
 				public string Snapshot { get; set; }
 
 
-				[Field(Expression = ".//div[@class='c-summary c-row ']", Option = FieldOptions.InnerText)]
+				[FieldSelector(Expression = ".//div[@class='c-summary c-row ']", Option = FieldOptions.InnerText)]
 				[ReplaceFormatter(NewValue = "", OldValue = "<em>")]
 				[ReplaceFormatter(NewValue = "", OldValue = "</em>")]
 				[ReplaceFormatter(NewValue = " ", OldValue = "&nbsp;")]
 				public string Details { get; set; }
 
-				[Field(Expression = ".", Option = FieldOptions.InnerText)]
+				[FieldSelector(Expression = ".", Option = FieldOptions.InnerText)]
 				[ReplaceFormatter(NewValue = "", OldValue = "<em>")]
 				[ReplaceFormatter(NewValue = "", OldValue = "</em>")]
 				[ReplaceFormatter(NewValue = " ", OldValue = "&nbsp;")]
@@ -224,7 +223,7 @@ namespace DotnetSpider.Extension.Test
 			{
 			}
 
-			protected override void MyInit(params string[] arguments)
+			protected override void OnInit(params string[] arguments)
 			{
 				Identity = Guid.NewGuid().ToString();
 				EmptySleepTime = 5000;
@@ -236,20 +235,27 @@ namespace DotnetSpider.Extension.Test
 			[EntitySelector(Expression = "//div[@class='ztlb_ld_mainR_box01_list']/ul/li")]
 			class ArticleSummary
 			{
-				[Field(Expression = ".//a/@title")]
+				[FieldSelector(Expression = ".//a/@title")]
 				public string Title { get; set; }
 
-				[LinkToNext(Extras = new[] { "Title", "Url" })]
-				[Field(Expression = ".//a/@href")]
+				[ToNext(Extras = new[] { "Title", "Url" })]
+				[FieldSelector(Expression = ".//a/@href")]
 				public string Url { get; set; }
 			}
 		}
 
 		private class MultiEntitySpider : EntitySpider
 		{
-			protected override void MyInit(params string[] arguments)
+			protected override void OnInit(params string[] arguments)
 			{
-				EmptySleepTime = 5000;
+				Site = new Site
+				{
+					Headers = new Dictionary<string, string>
+					{
+						{ "Upgrade-Insecure-Requests", "1"}
+					}
+				};
+				EmptySleepTime = 6000;
 				AddPipeline(new CollectionEntityPipeline());
 				AddStartUrl("http://www.163.com");
 				AddStartUrl("http://www.sohu.com");
@@ -258,18 +264,18 @@ namespace DotnetSpider.Extension.Test
 			}
 
 			[TableInfo("test", "neteast")]
-			[TargetUrlsSelector(XPaths = new string[] { }, Patterns = new[] { "163" })]
+			[TargetRequestSelector(Patterns = new[] { "http://www.163.com" })]
 			public class NeteastEntity
 			{
-				[Field(Expression = ".//title")]
+				[FieldSelector(Expression = ".//title")]
 				public string Title { get; set; }
 			}
 
 			[TableInfo("test", "sohu")]
-			[TargetUrlsSelector(XPaths = new string[] { }, Patterns = new[] { "sohu" })]
+			[TargetRequestSelector(Patterns = new[] { "http://www.sohu.com" })]
 			public class SohuEntity
 			{
-				[Field(Expression = ".//title")]
+				[FieldSelector(Expression = ".//title")]
 				public string Title { get; set; }
 			}
 		}

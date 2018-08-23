@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
 using DotnetSpider.Core;
-using DotnetSpider.Extension.Model;
 using DotnetSpider.Core.Pipeline;
 using System;
 using System.Linq;
+using DotnetSpider.Extraction.Model;
+using DotnetSpider.Common;
 
 namespace DotnetSpider.Extension.Pipeline
 {
@@ -15,37 +16,37 @@ namespace DotnetSpider.Extension.Pipeline
 		/// <summary>
 		/// 处理爬虫实体解析器解析到的实体数据结果
 		/// </summary>
-		/// <param name="identity">爬虫实体类的名称</param>
-		/// <param name="datas">实体类数据</param>
-		/// <param name="spider">爬虫</param>
+		/// <param name="model">数据模型</param>
+		/// <param name="datas">数据</param>
+		/// <param name="logger">日志接口</param>
+		/// <param name="sender">调用方</param>
 		/// <returns>最终影响结果数量(如数据库影响行数)</returns>
-		protected abstract int Process(IModel model, IEnumerable<dynamic> datas, ISpider spider);
+		protected abstract int Process(IModel model, IList<dynamic> datas, ILogger logger, dynamic sender = null);
 
 		/// <summary>
 		/// 处理页面解析器解析到的数据结果
 		/// </summary>
 		/// <param name="resultItems">数据结果</param>
-		/// <param name="spider">爬虫</param>
-		public override void Process(IEnumerable<ResultItems> resultItems, ISpider spider)
+		/// <param name="logger">日志接口</param>
+		/// <param name="sender">调用方</param>
+		public override void Process(IList<ResultItems> resultItems, ILogger logger, dynamic sender = null)
 		{
-			if (resultItems == null || resultItems.Count() == 0)
+			if (resultItems == null)
 			{
 				return;
 			}
 
 			foreach (var resultItem in resultItems)
 			{
-				resultItem.Request.CountOfResults = 0;
-				resultItem.Request.EffectedRows = 0;
-
 				foreach (var kv in resultItem.Results)
 				{
-					var value = kv.Value as Tuple<IModel, IEnumerable<dynamic>>;
+					var value = kv.Value as Tuple<IModel, IList<dynamic>>;
 
-					if (value != null && value.Item2 != null && value.Item2.Count() > 0)
+					if (value?.Item2 != null && value.Item2.Any())
 					{
-						resultItem.Request.CountOfResults += value.Item2.Count();
-						resultItem.Request.EffectedRows += Process(value.Item1, value.Item2, spider);
+						resultItem.Request.AddCountOfResults(value.Item2.Count);
+						int effectedRows = Process(value.Item1, value.Item2, logger, sender);
+						resultItem.Request.AddEffectedRows(effectedRows);
 					}
 				}
 			}

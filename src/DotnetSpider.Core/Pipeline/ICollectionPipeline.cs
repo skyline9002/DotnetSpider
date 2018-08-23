@@ -3,14 +3,15 @@ using System.Collections.Generic;
 namespace DotnetSpider.Core.Pipeline
 {
 	/// <summary>
-	/// ËùÓĞÊı¾İ½á¹û´æÔÚÄÚ´æÖĞ.
+	/// æ‰€æœ‰æ•°æ®ç»“æœå­˜åœ¨å†…å­˜ä¸­.
 	/// </summary>
 	public interface ICollectionPipeline : IPipeline
 	{
 		/// <summary>
 		/// Get all results collected.
 		/// </summary>
+		/// <param name="owner">æ•°æ®æ‹¥æœ‰è€…</param>
 		/// <returns>All results collected</returns>
-		IEnumerable<ResultItems> GetCollection(ISpider spider);
+		IList<ResultItems> GetCollection(dynamic owner);
 	}
 }

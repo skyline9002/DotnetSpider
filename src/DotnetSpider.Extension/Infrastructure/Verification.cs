@@ -5,7 +5,6 @@ using System.Text;
 using DotnetSpider.Core.Infrastructure;
 using MimeKit;
 using System.Linq;
-using System.Reflection;
 using System.Web;
 using System.IO;
 using DotnetSpider.Core.Infrastructure.Database;
@@ -16,12 +15,12 @@ namespace DotnetSpider.Extension.Infrastructure
 	/// <summary>
 	/// 查询数据库结果
 	/// </summary>
-	internal class QueryResult
+	public class QueryResult
 	{
 		/// <summary>
 		/// 查询数据库结果
 		/// </summary>
-		public dynamic Result { get; set; }
+		public dynamic Result;
 	}
 
 	/// <summary>
@@ -77,30 +76,37 @@ namespace DotnetSpider.Extension.Infrastructure
 		/// 邮件接收人
 		/// </summary>
 		public List<string> EmailTo { get; set; }
+
 		/// <summary>
 		/// 邮件发送服务地址
 		/// </summary>
 		public string EmailHost { get; set; }
+
 		/// <summary>
 		/// 邮件的标题
 		/// </summary>
 		public string Subject { get; set; }
+
 		/// <summary>
 		/// 爬虫任务的描述
 		/// </summary>
-		public string Description { get; set; }
+		public string Description;
+
 		/// <summary>
 		/// 邮件发送服务端口
 		/// </summary>
 		public int EmailPort { get; set; } = 25;
+
 		/// <summary>
 		/// 邮件发送服务的用户名
 		/// </summary>
 		public string EmailAccount { get; set; }
+
 		/// <summary>
 		/// 邮件发送服务的密码
 		/// </summary>
 		public string EmailPassword { get; set; }
+
 		/// <summary>
 		/// 邮件发送服务的显示名称
 		/// </summary>
@@ -275,15 +281,15 @@ namespace DotnetSpider.Extension.Infrastructure
 				}
 
 				var report =
-				"<tr>" +
-				$"<td>{Name}</td>" +
-				$"<td>{VerificationName}</td>" +
-				$"<td>{Sql}</td>" +
-				$"<td>{ExpectedValue}</td>" +
-				$"<td>{result}</td>" +
-				$"<td style=\"color:{color}\"><strong>{verifyResultStr}</strong></td>" +
-				$"<td>{DateTime.Now:yyyy-MM-dd hh:mm:ss}</td>" +
-				"</tr>";
+					"<tr>" +
+					$"<td>{Name}</td>" +
+					$"<td>{VerificationName}</td>" +
+					$"<td>{Sql}</td>" +
+					$"<td>{ExpectedValue}</td>" +
+					$"<td>{result}</td>" +
+					$"<td style=\"color:{color}\"><strong>{verifyResultStr}</strong></td>" +
+					$"<td>{DateTime.Now:yyyy-MM-dd hh:mm:ss}</td>" +
+					"</tr>";
 
 				return new VerificationInfo
 				{
@@ -397,15 +403,15 @@ namespace DotnetSpider.Extension.Infrastructure
 				}
 
 				var report =
-				"<tr>" +
-				$"<td>{Name}</td>" +
-				$"<td>{VerificationName}</td>" +
-				$"<td>NONE</td>" +
-				$"<td>{ExpectedValue}</td>" +
-				$"<td>{Acutal}</td>" +
-				$"<td style=\"color:{color}\"><strong>{verifyResultStr}</strong></td>" +
-				$"<td>{DateTime.Now:yyyy-MM-dd hh:mm:ss}</td>" +
-				"</tr>";
+					"<tr>" +
+					$"<td>{Name}</td>" +
+					$"<td>{VerificationName}</td>" +
+					$"<td>NONE</td>" +
+					$"<td>{ExpectedValue}</td>" +
+					$"<td>{Acutal}</td>" +
+					$"<td style=\"color:{color}\"><strong>{verifyResultStr}</strong></td>" +
+					$"<td>{DateTime.Now:yyyy-MM-dd hh:mm:ss}</td>" +
+					"</tr>";
 
 				return new VerificationInfo
 				{
@@ -537,8 +543,9 @@ namespace DotnetSpider.Extension.Infrastructure
 		/// <param name="dataFileName">附件的数据的文件名</param>
 		public Verification(Type type, string reportSampleSql = null, string dataSql = null, string dataFileName = null)
 		{
-			_description = type.GetTypeInfo().GetCustomAttribute<Description>();
-			EmailTo = _description.Email?.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(e => e.Trim()).ToList();
+			_description = (Description)type.GetCustomAttributes(typeof(Description), true).First();
+			EmailTo = _description.Email?.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(e => e.Trim())
+				.ToList();
 			Subject = _description.Subject;
 			_reportSampleSql = reportSampleSql;
 			_exportDataSql = dataSql;
@@ -558,9 +565,11 @@ namespace DotnetSpider.Extension.Infrastructure
 		/// <param name="reportSampleSql">样例数据的查询语句</param>
 		/// <param name="dataSql">验证报告附件的数据查询SQL语句</param>
 		/// <param name="dataFileName">附件的数据的文件名</param>
-		public Verification(Type type, string emailTo, string subject, string host, int port, string account, string password, string reportSampleSql = null, string dataSql = null, string dataFileName = null) : base(emailTo, subject, host, port, account, password)
+		public Verification(Type type, string emailTo, string subject, string host, int port, string account, string password,
+			string reportSampleSql = null, string dataSql = null, string dataFileName = null) : base(emailTo, subject, host,
+			port, account, password)
 		{
-			_description = type.GetTypeInfo().GetCustomAttribute<Description>();
+			_description = (Description)type.GetCustomAttributes(typeof(Description), true).First();
 			_exportDataSql = dataSql;
 			_exportDataFileName = dataFileName;
 			_reportSampleSql = reportSampleSql;
@@ -573,52 +582,55 @@ namespace DotnetSpider.Extension.Infrastructure
 		public override VerificationResult Report()
 		{
 			VerificationResult veridationResult = new VerificationResult();
-			if (Core.Env.SystemConnectionStringSettings == null)
+			if (Core.Env.DataConnectionStringSettings == null)
 			{
 				return veridationResult;
 			}
+
 			if (!string.IsNullOrWhiteSpace(_reportSampleSql) && _reportSampleSql.ToLower().Contains("limit"))
 			{
 				Log.Logger.Error("SQL contains 'LIMIT'.");
 				return veridationResult;
 			}
-			if (Verifications != null && Verifications.Count > 0 && EmailTo != null && EmailTo.Count > 0 && !string.IsNullOrWhiteSpace(EmailHost))
+
+			if (Verifications != null && Verifications.Count > 0 && EmailTo != null && EmailTo.Count > 0 &&
+				!string.IsNullOrWhiteSpace(EmailHost))
 			{
 				using (var conn = Core.Env.DataConnectionStringSettings.CreateDbConnection())
 				{
 					var emailBody = new StringBuilder();
 					var hasProperties = _description != null;
 					emailBody.Append(
-"<html><head>" +
-"<meta charset=\"utf-8\">" +
-"<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">" +
-"<meta name=\"viewport\" content=\"width=device-width initial-scale=1.0\">" +
-$"<title>{Subject}: {DateTime.Now}</title>" +
-"<style>" +
-"table {border-collapse: collapse;border-spacing: 0;border-left: 1px solid #888;border-top: 1px solid #888;background: #efefef;}th, td {border-right: 1px solid #888;border-bottom: 1px solid #888;padding: 5px 15px;}th {font-weight: bold;background: #ccc;}" +
-"</style>" +
-"</head>" +
-"<body style=\"background-color:#FAF7EC\">" +
-$"<h2>{Subject}: {DateTime.Now}</h2>" +
-(hasProperties ? $"<strong>Analyst: </strong>{_description.Owner}" : "") +
-(hasProperties ? $"&nbsp;&nbsp;&nbsp;<strong>Developer: </strong>{_description.Developer}" : "") +
-(hasProperties ? $"&nbsp;&nbsp;&nbsp;<strong>Date: </strong>{_description.Date}" : "") +
-(hasProperties ? $"&nbsp;&nbsp;&nbsp;<strong>Description: </strong>{base.Description}" : "") +
-"<br/><br/>" +
-"<table>" +
-"<thead>" +
-"<tr>" +
-"<th>Item</th>" +
-"<th>Rule</th>" +
-"<th>SQL</th>" +
-"<th>Expected</th>" +
-"<th>Actual</th>" +
-"<th>Result</th>" +
-"<th>Time</th> " +
-"</tr>" +
-"</thead>" +
-"<tbody>"
-);
+						"<html><head>" +
+						"<meta charset=\"utf-8\">" +
+						"<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">" +
+						"<meta name=\"viewport\" content=\"width=device-width initial-scale=1.0\">" +
+						$"<title>{Subject}: {DateTime.Now}</title>" +
+						"<style>" +
+						"table {border-collapse: collapse;border-spacing: 0;border-left: 1px solid #888;border-top: 1px solid #888;background: #efefef;}th, td {border-right: 1px solid #888;border-bottom: 1px solid #888;padding: 5px 15px;}th {font-weight: bold;background: #ccc;}" +
+						"</style>" +
+						"</head>" +
+						"<body style=\"background-color:#FAF7EC\">" +
+						$"<h2>{Subject}: {DateTime.Now}</h2>" +
+						(hasProperties ? $"<strong>Analyst: </strong>{_description.Owner}" : "") +
+						(hasProperties ? $"&nbsp;&nbsp;&nbsp;<strong>Developer: </strong>{_description.Developer}" : "") +
+						(hasProperties ? $"&nbsp;&nbsp;&nbsp;<strong>Date: </strong>{_description.Date}" : "") +
+						(hasProperties ? $"&nbsp;&nbsp;&nbsp;<strong>Description: </strong>{Description}" : "") +
+						"<br/><br/>" +
+						"<table>" +
+						"<thead>" +
+						"<tr>" +
+						"<th>Item</th>" +
+						"<th>Rule</th>" +
+						"<th>SQL</th>" +
+						"<th>Expected</th>" +
+						"<th>Actual</th>" +
+						"<th>Result</th>" +
+						"<th>Time</th> " +
+						"</tr>" +
+						"</thead>" +
+						"<tbody>"
+					);
 					var success = true;
 					foreach (var verifier in Verifications)
 					{
@@ -629,6 +641,7 @@ $"<h2>{Subject}: {DateTime.Now}</h2>" +
 							success = false;
 						}
 					}
+
 					veridationResult.Success = success;
 					emailBody.Append("</tbody></table><br/>");
 					if (!string.IsNullOrWhiteSpace(_reportSampleSql))
@@ -636,6 +649,7 @@ $"<h2>{Subject}: {DateTime.Now}</h2>" +
 						emailBody.Append("<strong>数据样本</strong><br/><br/>");
 						emailBody.Append(conn.ToHtml($"{_reportSampleSql} LIMIT 100;"));
 					}
+
 					emailBody.Append("<br/><br/></body></html>");
 
 					var message = new MimeMessage();
@@ -650,16 +664,25 @@ $"<h2>{Subject}: {DateTime.Now}</h2>" +
 
 					var html = new TextPart("html")
 					{
+#if NETFRAMEWORK
+						Text = System.Net.WebUtility.HtmlDecode(emailBody.ToString())
+#else
 						Text = HttpUtility.HtmlDecode(emailBody.ToString())
+#endif
 					};
 					var multipart = new Multipart("mixed") { html };
 
-					if (veridationResult.Success && !string.IsNullOrWhiteSpace(_exportDataSql) && !string.IsNullOrWhiteSpace(_exportDataFileName))
+					if (veridationResult.Success && !string.IsNullOrWhiteSpace(_exportDataSql) &&
+						!string.IsNullOrWhiteSpace(_exportDataFileName))
 					{
 						var path = conn.Export(_exportDataSql, $"{_exportDataFileName}_{DateTime.Now:yyyyMMddhhmmss}", true);
 						var attachment = new MimePart("excel", "xlsx")
 						{
+#if !NET40
 							Content = new MimeContent(File.OpenRead(path)),
+#else
+							ContentObject = new ContentObject(File.OpenRead(path)),
+#endif
 							ContentDisposition = new ContentDisposition(ContentDisposition.Attachment),
 							ContentTransferEncoding = ContentEncoding.Base64,
 							FileName = Path.GetFileName(path)
@@ -699,7 +722,8 @@ $"<h2>{Subject}: {DateTime.Now}</h2>" +
 		/// <param name="reportSampleSql">样例数据的查询语句</param>
 		/// <param name="dataSql">附件的数据查询SQL语句</param>
 		/// <param name="dataFileName">附件的数据的文件名</param>
-		public Verification(string reportSampleSql = null, string dataSql = null, string dataFileName = null) : base(typeof(TE), reportSampleSql, dataSql, dataFileName)
+		public Verification(string reportSampleSql = null, string dataSql = null, string dataFileName = null) : base(
+			typeof(TE), reportSampleSql, dataSql, dataFileName)
 		{
 		}
 
@@ -715,7 +739,9 @@ $"<h2>{Subject}: {DateTime.Now}</h2>" +
 		/// <param name="reportSampleSql">样例数据的查询语句</param>
 		/// <param name="dataSql">附件的数据查询SQL语句</param>
 		/// <param name="dataFileName">附件的数据的文件名</param>
-		public Verification(string emailTo, string subject, string host, int port, string account, string password, string reportSampleSql = null, string dataSql = null, string dataFileName = null) : base(typeof(TE), emailTo, subject, host, port, account, password, reportSampleSql, dataSql, dataFileName)
+		public Verification(string emailTo, string subject, string host, int port, string account, string password,
+			string reportSampleSql = null, string dataSql = null, string dataFileName = null) : base(typeof(TE), emailTo,
+			subject, host, port, account, password, reportSampleSql, dataSql, dataFileName)
 		{
 		}
 	}

@@ -1,13 +1,12 @@
 ﻿using DotnetSpider.Core;
-using DotnetSpider.Core.Selector;
-using DotnetSpider.Extension.Model;
-using DotnetSpider.Extension.Model.Attribute;
 using DotnetSpider.Extension.Processor;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Xunit;
+using DotnetSpider.Extraction.Model.Attribute;
+using DotnetSpider.Extraction.Model;
+using DotnetSpider.Common;
 
 namespace DotnetSpider.Extension.Test.Processor
 {
@@ -16,8 +15,7 @@ namespace DotnetSpider.Extension.Test.Processor
 		private string Html = @"
 <div>
 	<div class='int'>100</div>
-	<div class='bool1'>true</div>
-	<div class='bool2'>0</div>
+	<div class='bool'>true</div>
 	<div class='bigint'>200</div>
 	<div class='string'>abcd</div>
 	<div class='datetime'>2018-06-03</div>
@@ -30,15 +28,13 @@ namespace DotnetSpider.Extension.Test.Processor
 		public void ModelProcess()
 		{
 			EntityProcessor<N> processor = new EntityProcessor<N>();
-			var spider = new DefaultSpider();
 			var page = CreatePage();
-			processor.Process(page, spider);
+			processor.Process(page, null);
 
-			var results = page.ResultItems.GetResultItem(processor.Model.Identity) as Tuple<IModel, IEnumerable<dynamic>>;
+			var results = page.ResultItems.GetResultItem(processor.Model.Identity) as Tuple<IModel, IList<dynamic>>;
 			var model = results.Item2.First() as N;
 			Assert.Equal(100, model.Int);
-			Assert.True(model.Bool1);
-			Assert.False(model.Bool2);
+			Assert.True(model.Bool);
 			Assert.Equal(200, model.BigInt);
 			Assert.Equal("abcd", model.String);
 			Assert.Equal(new DateTime(2018, 6, 3), model.DateTime);
@@ -59,31 +55,28 @@ namespace DotnetSpider.Extension.Test.Processor
 
 		private class N
 		{
-			[Field(Expression = ".//div[@class='int']")]
+			[FieldSelector(Expression = ".//div[@class='int']")]
 			public int Int { get; set; }
 
-			[Field(Expression = ".//div[@class='bool1']")]
-			public bool Bool1 { get; set; }
+			[FieldSelector(Expression = ".//div[@class='bool']")]
+			public bool Bool { get; set; }
 
-			[Field(Expression = ".//div[@class='bool2']")]
-			public bool Bool2 { get; set; }
-
-			[Field(Expression = ".//div[@class='bigint']")]
+			[FieldSelector(Expression = ".//div[@class='bigint']")]
 			public long BigInt { get; set; }
 
-			[Field(Expression = ".//div[@class='string']")]
+			[FieldSelector(Expression = ".//div[@class='string']")]
 			public string String { get; set; }
 
-			[Field(Expression = ".//div[@class='datetime']")]
+			[FieldSelector(Expression = ".//div[@class='datetime']")]
 			public DateTime DateTime { get; set; }
 
-			[Field(Expression = ".//div[@class='float']")]
+			[FieldSelector(Expression = ".//div[@class='float']")]
 			public float Float { get; set; }
 
-			[Field(Expression = ".//div[@class='double']")]
+			[FieldSelector(Expression = ".//div[@class='double']")]
 			public double Double { get; set; }
 
-			[Field(Expression = ".//div[@class='decimal']")]
+			[FieldSelector(Expression = ".//div[@class='decimal']")]
 			public decimal Decimal { get; set; }
 		}
 	}

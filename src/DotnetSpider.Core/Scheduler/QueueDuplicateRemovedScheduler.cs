@@ -1,4 +1,4 @@
-using DotnetSpider.Core.Infrastructure;
+using DotnetSpider.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,22 +10,25 @@ namespace DotnetSpider.Core.Scheduler
 	/// </summary>
 	public class QueueDuplicateRemovedScheduler : DuplicateRemovedScheduler
 	{
-		private readonly object _lock = new object();
-		private List<Request> _queue = new List<Request>();
 		private readonly AutomicLong _successCounter = new AutomicLong(0);
 		private readonly AutomicLong _errorCounter = new AutomicLong(0);
+		protected readonly List<Request> _queue = new List<Request>();
+		protected readonly object _lock = new object();
 
+		/// <summary>
+		/// æ˜¯å¦æ˜¯åˆ†å¸ƒå¼è°ƒåº¦å™¨
+		/// </summary>
 		public override bool IsDistributed => false;
 
 		/// <summary>
-		/// ÊÇ·ñ»áÊ¹ÓÃ»¥ÁªÍø
+		/// æ˜¯å¦ä¼šä½¿ç”¨äº’è”ç½‘
 		/// </summary>
 		protected override bool UseInternet { get; set; } = false;
 
 		/// <summary>
-		/// Èç¹ûÁ´½Ó²»ÊÇÖØ¸´µÄ¾ÍÌí¼Óµ½¶ÓÁĞÖĞ
+		/// å¦‚æœé“¾æ¥ä¸æ˜¯é‡å¤çš„å°±æ·»åŠ åˆ°é˜Ÿåˆ—ä¸­
 		/// </summary>
-		/// <param name="request">ÇëÇó¶ÔÏó</param>
+		/// <param name="request">è¯·æ±‚å¯¹è±¡</param>
 		protected override void PushWhenNoDuplicate(Request request)
 		{
 			lock (_lock)
@@ -42,13 +45,14 @@ namespace DotnetSpider.Core.Scheduler
 			lock (_lock)
 			{
 				_queue.Clear();
+				DuplicateRemover.ResetDuplicateCheck();
 			}
 		}
 
 		/// <summary>
-		/// È¡µÃÒ»¸öĞèÒª´¦ÀíµÄÇëÇó¶ÔÏó
+		/// å–å¾—ä¸€ä¸ªéœ€è¦å¤„ç†çš„è¯·æ±‚å¯¹è±¡
 		/// </summary>
-		/// <returns>ÇëÇó¶ÔÏó</returns>
+		/// <returns>è¯·æ±‚å¯¹è±¡</returns>
 		public override Request Poll()
 		{
 			lock (_lock)
@@ -62,13 +66,13 @@ namespace DotnetSpider.Core.Scheduler
 					Request request;
 					switch (TraverseStrategy)
 					{
-						case TraverseStrategy.DFS:
+						case TraverseStrategy.Dfs:
 							{
 								request = _queue.Last();
 								_queue.RemoveAt(_queue.Count - 1);
 								break;
 							}
-						case TraverseStrategy.BFS:
+						case TraverseStrategy.Bfs:
 							{
 								request = _queue.First();
 								_queue.RemoveAt(0);
@@ -86,7 +90,7 @@ namespace DotnetSpider.Core.Scheduler
 		}
 
 		/// <summary>
-		/// Ê£ÓàÁ´½ÓÊı
+		/// å‰©ä½™é“¾æ¥æ•°
 		/// </summary>
 		public override long LeftRequestsCount
 		{
@@ -100,17 +104,17 @@ namespace DotnetSpider.Core.Scheduler
 		}
 
 		/// <summary>
-		/// ²É¼¯³É¹¦µÄÁ´½ÓÊı
+		/// é‡‡é›†æˆåŠŸçš„é“¾æ¥æ•°
 		/// </summary>
 		public override long SuccessRequestsCount => _successCounter.Value;
 
 		/// <summary>
-		/// ²É¼¯Ê§°ÜµÄ´ÎÊı, ²»ÊÇÁ´½ÓÊı, Èç¹ûÒ»¸öÁ´½Ó²É¼¯¶à´Î¶¼Ê§°Ü»á¼ÇÂ¼¶à´Î
+		/// é‡‡é›†å¤±è´¥çš„æ¬¡æ•°, ä¸æ˜¯é“¾æ¥æ•°, å¦‚æœä¸€ä¸ªé“¾æ¥é‡‡é›†å¤šæ¬¡éƒ½å¤±è´¥ä¼šè®°å½•å¤šæ¬¡
 		/// </summary>
 		public override long ErrorRequestsCount => _errorCounter.Value;
 
 		/// <summary>
-		/// ²É¼¯³É¹¦µÄÁ´½ÓÊı¼Ó 1
+		/// é‡‡é›†æˆåŠŸçš„é“¾æ¥æ•°åŠ  1
 		/// </summary>
 		public override void IncreaseSuccessCount()
 		{
@@ -118,7 +122,7 @@ namespace DotnetSpider.Core.Scheduler
 		}
 
 		/// <summary>
-		/// ²É¼¯Ê§°ÜµÄ´ÎÊı¼Ó 1
+		/// é‡‡é›†å¤±è´¥çš„æ¬¡æ•°åŠ  1
 		/// </summary>
 		public override void IncreaseErrorCount()
 		{
@@ -126,27 +130,25 @@ namespace DotnetSpider.Core.Scheduler
 		}
 
 		/// <summary>
-		/// ÅúÁ¿µ¼Èë
+		/// æ‰¹é‡å¯¼å…¥
 		/// </summary>
-		/// <param name="requests">ÇëÇó¶ÔÏó</param>
-		public override void Import(IEnumerable<Request> requests)
+		/// <param name="requests">è¯·æ±‚å¯¹è±¡</param>
+		public override void Reload(ICollection<Request> requests)
 		{
+			if (requests == null)
+			{
+				return;
+			}
+
 			lock (_lock)
 			{
-				_queue = new List<Request>(requests);
-			}
-		}
-
-		/// <summary>
-		/// È¡µÃ¶ÓÁĞÖĞËùÓĞµÄÇëÇó¶ÔÏó
-		/// </summary>
-		public IReadOnlyCollection<Request> All
-		{
-			get
-			{
-				lock (_lock)
+				_queue.Clear();
+				foreach (var request in requests)
 				{
-					return new ReadOnlyEnumerable<Request>(_queue.ToArray());
+					if (!DuplicateRemover.IsDuplicate(request))
+					{
+						_queue.Add(request);
+					}
 				}
 			}
 		}
@@ -158,12 +160,23 @@ namespace DotnetSpider.Core.Scheduler
 		{
 			lock (_lock)
 			{
-				_successCounter.Set(0);
-				_errorCounter.Set(0);
 				_queue.Clear();
 			}
-
 			base.Dispose();
+		}
+
+		/// <summary>
+		/// å–å¾—é˜Ÿåˆ—ä¸­æ‰€æœ‰çš„è¯·æ±‚å¯¹è±¡
+		/// </summary>
+		internal Request[] All
+		{
+			get
+			{
+				lock (_lock)
+				{
+					return _queue.ToArray();
+				}
+			}
 		}
 	}
 }

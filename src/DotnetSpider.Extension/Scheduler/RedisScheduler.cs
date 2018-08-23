@@ -6,11 +6,12 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using StackExchange.Redis;
 using DotnetSpider.Extension.Infrastructure;
-using DotnetSpider.Core.Redial;
 using System;
 using Polly;
 using Polly.Retry;
 using System.Linq;
+using DotnetSpider.Common;
+using DotnetSpider.Downloader;
 
 namespace DotnetSpider.Extension.Scheduler
 {
@@ -21,18 +22,16 @@ namespace DotnetSpider.Extension.Scheduler
 	{
 		private readonly object _locker = new object();
 		private const string TasksKey = "dotnetspider:tasks";
-		private const string TaskStatsKey = "dotnetspider:task-stats";
 		private readonly RetryPolicy _retryPolicy = Policy.Handle<Exception>().Retry(30);
-		private string _queueKey;
-		private string _setKey;
-		private string _itemKey;
-		private string _errorCountKey;
-		private string _successCountKey;
-		private string _identityMd5;
+		private readonly string _queueKey;
+		private readonly string _setKey;
+		private readonly string _itemKey;
+		private readonly string _errorCountKey;
+		private readonly string _successCountKey;
 		private readonly AutomicLong _successCounter = new AutomicLong(0);
 		private readonly AutomicLong _errorCounter = new AutomicLong(0);
-		private string _connectString;
 		private RedisConnection _redisConnection;
+		private readonly Dictionary<string, RedisConnection> _cache = new Dictionary<string, RedisConnection>();
 
 		/// <summary>
 		/// 批量加载时的每批次加载数
@@ -44,74 +43,59 @@ namespace DotnetSpider.Extension.Scheduler
 		/// <summary>
 		/// RedisScheduler是否会使用互联网
 		/// </summary>
-		protected override bool UseInternet { get; set; } = true;
+		protected sealed override bool UseInternet { get; set; } = true;
 
 		/// <summary>
 		/// 构造方法
 		/// </summary>
-		/// <param name="connectString">Redis连接字符串</param>
-		public RedisScheduler(string connectString)
+		/// <param name="identity">对列标识</param>
+		public RedisScheduler(string identity) : this(identity, Env.RedisConnectString)
 		{
+		}
+
+		/// <summary>
+		/// 构造方法
+		/// </summary>
+		/// <param name="identity">对列标识</param>
+		/// <param name="connectString">Redis连接字符串</param>
+		public RedisScheduler(string identity, string connectString)
+		{
+			if (string.IsNullOrWhiteSpace(identity))
+			{
+				throw new ArgumentNullException(nameof(identity));
+			}
 			if (string.IsNullOrWhiteSpace(connectString))
 			{
-				throw new SpiderException("Redis connect string should not be empty");
-			}
-			_connectString = connectString;
-			DuplicateRemover = this;
-		}
-
-		/// <summary>
-		/// 构造方法
-		/// </summary>
-		public RedisScheduler()
-		{
-			_connectString = Env.RedisConnectString;
-			DuplicateRemover = this;
-		}
-
-		/// <summary>
-		/// 初始化队列
-		/// </summary>
-		/// <param name="spider">爬虫对象</param>
-		public override void Init(ISpider spider)
-		{
-			base.Init(spider);
-
-			if (string.IsNullOrWhiteSpace(_connectString))
-			{
-				throw new SpiderException("Redis connect string should not be null or empty");
+				throw new ArgumentNullException(nameof(connectString));
 			}
 
-			if (string.IsNullOrWhiteSpace(_identityMd5))
+			var s = connectString;
+			DuplicateRemover = this;
+
+			var md5 = identity.ToShortMd5();
+			_itemKey = $"dotnetspider:scheduler:{md5}:items";
+			_setKey = $"dotnetspider:scheduler:{md5}:set";
+			_queueKey = $"dotnetspider:scheduler:{md5}:queue";
+			_errorCountKey = $"dotnetspider:scheduler:{md5}:countOfFailures";
+			_successCountKey = $"dotnetspider:scheduler:{md5}:countOfSuccess";
+
+			var action = new Action(() =>
 			{
-				var md5 = CryptoUtil.Md5Encrypt(spider.Identity);
-				_itemKey = $"dotnetspider:scheduler:{md5}:items";
-				_setKey = $"dotnetspider:scheduler:{md5}:set";
-				_queueKey = $"dotnetspider:scheduler:{md5}:queue";
-				_errorCountKey = $"dotnetspider:scheduler:{md5}:numberOfFailures";
-				_successCountKey = $"dotnetspider:scheduler:{md5}:numberOfSuccessful";
-
-				_identityMd5 = md5;
-
-				var action = new Action(() =>
+				if (!_cache.ContainsKey(s))
 				{
-					_redisConnection = Cache.Instance.Get(_connectString);
-					if (_redisConnection == null)
-					{
-						_redisConnection = new RedisConnection(_connectString);
-						Cache.Instance.Set(_connectString, _redisConnection);
-					}
-					_redisConnection.Database.SortedSetAdd(TasksKey, spider.Identity, (long)DateTimeUtil.GetCurrentUnixTimeNumber());
-				});
-
-				if (UseInternet)
-				{
-					NetworkCenter.Current.Execute("rds-init", action);
+					_redisConnection = new RedisConnection(s);
+					_cache.Add(s, _redisConnection);
 				}
-				else
-				{
-					action();
-				}
+				_redisConnection.Database.SortedSetAdd(TasksKey, identity, (long)DateTimeUtil.GetCurrentUnixTimeNumber());
+			});
+
+			if (UseInternet)
+			{
+				NetworkCenter.Current.Execute("rds-init", action);
+			}
+			else
+			{
+				action();
 			}
 		}
 
@@ -260,13 +244,14 @@ namespace DotnetSpider.Extension.Scheduler
 		/// 批量导入
 		/// </summary>
 		/// <param name="requests">请求对象</param>
-		public override void Import(IEnumerable<Request> requests)
+		public override void Reload(ICollection<Request> requests)
 		{
 			var action = new Action(() =>
 			{
 				lock (_locker)
 				{
 					int batchCount = BatchCount;
+
 					var count = requests.Count();
 					int cacheSize = count > batchCount ? batchCount : count;
 					RedisValue[] identities = new RedisValue[cacheSize];
@@ -335,70 +320,12 @@ namespace DotnetSpider.Extension.Scheduler
 			return requests;
 		}
 
-		//public override bool IsExited
-		//{
-		//	get
-		//	{
-		//		try
-		//		{
-		//			if (UseInternet)
-		//			{
-		//				return NetworkCenter.Current.Execute("rds-isexited", () =>
-		//				{
-		//					var result = _redisConnection.Database.HashGet(TaskStatsKey, _identityMd5);
-		//					if (result.HasValue)
-		//					{
-		//						return result == 1;
-		//					}
-		//					else
-		//					{
-		//						return false;
-		//					}
-		//				});
-		//			}
-		//			else
-		//			{
-		//				var result = _redisConnection.Database.HashGet(TaskStatsKey, _identityMd5);
-		//				if (result.HasValue)
-		//				{
-		//					return result == 1;
-		//				}
-		//				else
-		//				{
-		//					return false;
-		//				}
-		//			}
-
-		//		}
-		//		catch
-		//		{
-		//			return false;
-		//		}
-		//	}
-		//	set
-		//	{
-		//		var action = new Action(() =>
-		//		{
-		//			_redisConnection.Database.HashSet(TaskStatsKey, _identityMd5, value ? 1 : 0);
-		//		});
-		//		if (UseInternet)
-		//		{
-		//			NetworkCenter.Current.Execute("rds-isexited", action);
-		//		}
-		//		else
-		//		{
-		//			action();
-		//		}
-		//	}
-		//}
-
 		/// <summary>
 		/// 如果链接不是重复的就添加到队列中
 		/// </summary>
 		/// <param name="request">请求对象</param>
 		protected override void PushWhenNoDuplicate(Request request)
 		{
-			request.Site = request.Site ?? Spider.Site;
 			_retryPolicy.Execute(() =>
 			{
 				_redisConnection.Database.ListRightPush(_queueKey, request.Identity);
@@ -416,12 +343,12 @@ namespace DotnetSpider.Extension.Scheduler
 				RedisValue value;
 				switch (TraverseStrategy)
 				{
-					case TraverseStrategy.DFS:
+					case TraverseStrategy.Dfs:
 						{
 							value = _redisConnection.Database.ListRightPop(_queueKey);
 							break;
 						}
-					case TraverseStrategy.BFS:
+					case TraverseStrategy.Bfs:
 						{
 							value = _redisConnection.Database.ListLeftPop(_queueKey);
 							break;
@@ -443,7 +370,6 @@ namespace DotnetSpider.Extension.Scheduler
 				{
 					var result = JsonConvert.DeserializeObject<Request>(json);
 					_redisConnection.Database.HashDelete(_itemKey, field);
-					result.Site = Spider.Site;
 					return result;
 				}
 				return null;

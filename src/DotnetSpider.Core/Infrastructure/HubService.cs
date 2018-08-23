@@ -1,16 +1,16 @@
-﻿using DotnetSpider.Core.Redial;
-using Serilog;
+﻿using Serilog;
 using Polly;
 using Polly.Retry;
 using System;
 using System.Net.Http;
 using System.Text;
+using DotnetSpider.Downloader;
 
 namespace DotnetSpider.Core.Infrastructure
 {
 	public class HubService
 	{
-		private static RetryPolicy RetryPolicy = Policy.Handle<Exception>().Retry(5, (ex, count) =>
+		private static readonly RetryPolicy RetryPolicy = Policy.Handle<Exception>().Retry(5, (ex, count) =>
 		{
 			Log.Logger.Error($"Submit http log failed [{count}]: {ex}");
 		});
@@ -28,7 +28,7 @@ namespace DotnetSpider.Core.Infrastructure
 			{
 				NetworkCenter.Current.Execute("status", () =>
 				{
-					HttpSender.Client.SendAsync(httpRequestMessage).Result.EnsureSuccessStatusCode();
+					DotnetSpider.Downloader.Downloader.Default.SendAsync(httpRequestMessage).Result.EnsureSuccessStatusCode();
 				});
 			});
 		}

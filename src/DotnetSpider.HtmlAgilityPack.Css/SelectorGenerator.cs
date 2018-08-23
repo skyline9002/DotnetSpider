@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace DotnetSpider.HtmlAgilityPack
+namespace DotnetSpider.HtmlAgilityPack.Css
 {
     #region Imports
 
+	
 
-
-    #endregion
+	#endregion
 
     /// <summary>
     /// A selector generator implementation for an arbitrary document/element system.
@@ -272,10 +272,6 @@ namespace DotnetSpider.HtmlAgilityPack
         public void Last()
         {
             Add(Ops.Last());
-        }
-        public void First()
-        {
-            Add(Ops.First());
         }
     }
 }

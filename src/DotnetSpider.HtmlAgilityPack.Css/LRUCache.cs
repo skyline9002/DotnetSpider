@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace DotnetSpider.HtmlAgilityPack
+namespace DotnetSpider.HtmlAgilityPack.Css
 {
 	public class LruCache<TInput, TResult> : IDisposable
 	{
@@ -66,7 +66,7 @@ namespace DotnetSpider.HtmlAgilityPack
 
 		public int Capacity
 		{
-			get { return _capacity; }  
+			get => _capacity;
 
 			set
 			{

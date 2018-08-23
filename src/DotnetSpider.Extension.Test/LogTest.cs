@@ -9,9 +9,9 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using MySql.Data.MySqlClient;
-using DotnetSpider.Core.Downloader;
 using DotnetSpider.Core.Infrastructure;
-using System.Threading.Tasks;
+using DotnetSpider.Downloader;
+using DotnetSpider.Common;
 
 namespace DotnetSpider.Extension.Test
 {
@@ -28,7 +28,7 @@ namespace DotnetSpider.Extension.Test
 			Env.HubService = false;
 		}
 
-		[Fact(Skip = "Dep selrilog.mysql")]
+		[Fact(Skip = "Dep selrilog.mysql", DisplayName = "Log_DatebaseLogAndStatus")]
 		public void DatebaseLogAndStatus()
 		{
 			LogUtil.Init();
@@ -61,50 +61,48 @@ namespace DotnetSpider.Extension.Test
 			}
 		}
 
-		private class TestDownloader : BaseDownloader
+		private class TestDownloader : DotnetSpider.Downloader.Downloader
 		{
-			protected override Task<Page> DowloadContent(Request request, ISpider spider)
+			protected override Response DowloadContent(Request request)
 			{
 				Console.WriteLine("ok:" + request.Url);
-				var page = new Page(request)
-				{
-					Content = ""
-				};
-				return Task.FromResult(page);
-			}
-		}
-
-		class Log
-		{
-			public string level { get; set; }
-			public string message { get; set; }
-		}
-
-		class statusObj
-		{
-			public string status { get; set; }
-		}
-
-		internal class TestPipeline : BasePipeline
-		{
-			public override void Process(IEnumerable<ResultItems> resultItems, ISpider spider)
-			{
-				foreach (var resultItem in resultItems)
-				{
-					foreach (var entry in resultItem.Results)
-					{
-						Console.WriteLine($"{entry.Key}:{entry.Value}");
-					}
-				}
-			}
-		}
-
-		internal class TestPageProcessor : BasePageProcessor
-		{
-			protected override void Handle(Page page)
-			{
-				page.Skip = true;
+				return new Response(request) { Content = "" };
 			}
 		}
 	}
+
+	class Log
+	{
+		public string level { get; set; }
+		public string message { get; set; }
+	}
+
+	class statusObj
+	{
+		public string status { get; set; }
+	}
+
+	internal class TestPipeline : BasePipeline
+	{
+
+		public override void Process(IList<ResultItems> resultItems, ILogger logger, dynamic sender = null)
+		{
+			foreach (var resultItem in resultItems)
+			{
+				foreach (var entry in resultItem.Results)
+				{
+					Console.WriteLine($"{entry.Key}:{entry.Value}");
+				}
+			}
+		}
+	}
+
+	internal class TestPageProcessor : BasePageProcessor
+	{
+		protected override void Handle(Page page)
+		{
+			page.Bypass = true;
+		}
+	}
 }
+

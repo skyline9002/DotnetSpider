@@ -1,174 +1,33 @@
 using OpenQA.Selenium.Firefox;
 using System;
-using DotnetSpider.Core.Selector;
-using System.Linq;
-using System.Threading;
-using DotnetSpider.Core.Infrastructure;
-using DotnetSpider.Extension.Model;
 using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium;
 using OpenQA.Selenium.Remote;
-using DotnetSpider.Core.Downloader;
-using DotnetSpider.Core;
 using System.IO;
-using System.Collections.Generic;
-using System.Net;
+using DotnetSpider.Downloader;
+using DotnetSpider.Common;
 
 namespace DotnetSpider.Extension.Downloader
 {
-	/// <summary>
-	/// WebDriver µÄCookie×¢ÈëÆ÷
-	/// </summary>
-	public class WebDriverCookieInjector : CookieInjector
+	public abstract class WebDriverCookieInjector : CookieInjector
 	{
 		/// <summary>
-		/// µÇÂ½µÄÁ´½Ó
+		/// æµè§ˆå™¨
 		/// </summary>
-		public string Url { get; set; }
+		private readonly Browser _browser;
 
-		/// <summary>
-		/// µÇÂ½³É¹¦ºóĞèÒªÔÙ´Îµ¼º½µ½µÄÁ´½Ó
-		/// </summary>
-		public string AfterLoginUrl { get; set; }
-
-		/// <summary>
-		/// ÓÃ»§ÃûÔÚÍøÒ³ÖĞµÄÔªËØÑ¡ÔñÆ÷
-		/// </summary>
-		public Selector UserSelector { get; set; }
-
-		/// <summary>
-		/// ÓÃ»§Ãû
-		/// </summary>
-		public string User { get; set; }
-
-		/// <summary>
-		/// ÃÜÂëÔÚÍøÒ³ÖĞµÄÔªËØÑ¡ÔñÆ÷
-		/// </summary>
-		public Selector PasswordSelector { get; set; }
-
-		/// <summary>
-		/// ÃÜÂë
-		/// </summary>
-		public string Password { get; set; }
-
-		/// <summary>
-		/// µÇÂ½°´Å¥µÄÔªËØÑ¡ÔñÆ÷
-		/// </summary>
-		public Selector SubmitSelector { get; set; }
-
-		/// <summary>
-		/// ä¯ÀÀÆ÷
-		/// </summary>
-		public Browser Browser { get; set; } = Browser.Chrome;
-
-		/// <summary>
-		/// ÔÚÊäÈëÓÃ»§ĞÅÏ¢Ç°Ö´ĞĞµÄÒ»Ğ©×¼±¸²Ù×÷
-		/// </summary>
-		/// <param name="webDriver">WebDriver</param>
-		protected virtual void BeforeInput(RemoteWebDriver webDriver) { }
-
-		/// <summary>
-		/// Íê³ÉµÇÂ½ºóÖ´ĞĞµÄÒ»Ğ©×¼±¸²Ù×÷
-		/// </summary>
-		/// <param name="webDriver"></param>
-		protected virtual void AfterLogin(RemoteWebDriver webDriver) { }
-
-		/// <summary>
-		/// ²éÕÒÔªËØ
-		/// </summary>
-		/// <param name="webDriver">WebDriver</param>
-		/// <param name="element">Ò³ÃæÔªËØÑ¡ÔñÆ÷</param>
-		/// <returns>Ò³ÃæÔªËØ</returns>
-		protected IWebElement FindElement(RemoteWebDriver webDriver, Selector element)
+		public WebDriverCookieInjector(Browser browser, IControllable controllable) : base(controllable)
 		{
-			switch (element.Type)
-			{
-
-				case SelectorType.XPath:
-					{
-						return webDriver.FindElementByXPath(element.Expression);
-					}
-				case SelectorType.Css:
-					{
-						return webDriver.FindElementByCssSelector(element.Expression);
-					}
-			}
-			throw new SpiderException("Unsport findy: " + element.Type);
+			_browser = browser;
 		}
 
 		/// <summary>
-		/// È¡µÃ Cookie
+		/// åˆ›å»ºWebDriverå¯¹è±¡
 		/// </summary>
-		/// <param name="spider">ÅÀ³æ</param>
-		/// <returns>Cookie</returns>
-		protected override CookieCollection GetCookies(ISpider spider)
-		{
-			if (string.IsNullOrEmpty(User) || string.IsNullOrEmpty(Password) || UserSelector == null || PasswordSelector == null)
-			{
-				throw new SpiderException("Arguments of WebDriverCookieInjector are incorrect");
-			}
-			var cookies = new Dictionary<string, string>();
-
-			var webDriver = CreateWebDriver();
-			var result = new CookieCollection();
-			try
-			{
-				webDriver.Navigate().GoToUrl(Url);
-				Thread.Sleep(10000);
-
-				BeforeInput(webDriver);
-
-				if (UserSelector != null)
-				{
-					var user = FindElement(webDriver, UserSelector);
-					user.Clear();
-					user.SendKeys(User);
-					Thread.Sleep(1500);
-				}
-
-				if (PasswordSelector != null)
-				{
-					var pass = FindElement(webDriver, PasswordSelector);
-					pass.Clear();
-					pass.SendKeys(Password);
-					Thread.Sleep(1500);
-				}
-
-				var submit = FindElement(webDriver, SubmitSelector);
-				submit.Click();
-				Thread.Sleep(10000);
-
-				AfterLogin(webDriver);
-
-				var cookieList = webDriver.Manage().Cookies.AllCookies.ToList();
-				if (cookieList.Count > 0)
-				{
-					foreach (var cookieItem in cookieList)
-					{
-						result.Add(new System.Net.Cookie(cookieItem.Name, cookieItem.Value, cookieItem.Path, cookieItem.Domain));
-					}
-				}
-
-				webDriver.Dispose();
-			}
-			catch
-			{
-				spider.Logger.Error("Get cookie failed.");
-				webDriver.Dispose();
-				return null;
-			}
-
-			return result;
-		}
-
-		/// <summary>
-		/// ´´½¨WebDriver¶ÔÏó
-		/// </summary>
-		/// <returns>WebDriver¶ÔÏó</returns>
+		/// <returns>WebDriverå¯¹è±¡</returns>
 		protected RemoteWebDriver CreateWebDriver()
 		{
 			RemoteWebDriver webDriver;
-			switch (Browser)
+			switch (_browser)
 			{
 				case Browser.Chrome:
 					{
@@ -194,6 +53,7 @@ namespace DotnetSpider.Extension.Downloader
 						{
 							throw new Exception("No Firefox profiles: webdriver.");
 						}
+
 						break;
 					}
 				default:

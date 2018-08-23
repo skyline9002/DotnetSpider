@@ -1,32 +1,32 @@
-﻿using DotnetSpider.Core;
+﻿using DotnetSpider.Common;
+using DotnetSpider.Core;
+using DotnetSpider.Downloader;
 using DotnetSpider.Extension;
+using DotnetSpider.Extension.Pipeline;
+using DotnetSpider.Extraction;
+using DotnetSpider.Extraction.Model;
+using DotnetSpider.Extraction.Model.Attribute;
 using DotnetSpider.Sample.docs;
-using MessagePack;
-
 using System;
-#if !NETCOREAPP
+using System.Collections.Generic;
+using System.IO;
+using System.Net;
 using System.Threading;
-#else
-using System.Text;
-#endif
 
 namespace DotnetSpider.Sample
 {
-	public class Program
+	class Program
 	{
-		public static void Main(string[] args)
+		static void Main(string[] args)
 		{
 #if NETCOREAPP
 			Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 #else
-			ThreadPool.SetMinThreads(200, 200);
-			OcrDemo.Process();
+			ThreadPool.SetMinThreads(256, 256);
 #endif
-			AutoIncrementTargetUrlsExtractor.Run();
-
-			MyTest();
+ 
+			ConfigurableSpider.Run();
 		}
-
 
 		/// <summary>
 		/// <c>MyTest</c> is a method in the <c>Program</c>

@@ -1,11 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using DotnetSpider.Common;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using Xunit;
 
 namespace DotnetSpider.Core.Test
 {
-
 	public class PageTest
 	{
 		public static Request GetRequest()
@@ -19,7 +19,7 @@ namespace DotnetSpider.Core.Test
 			return request;
 		}
 
-		[Fact]
+		[Fact(DisplayName = "Page_Deep")]
 		public void Deep()
 		{
 			var request = GetRequest();

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using DotnetSpider.Common;
+using System.Collections.Generic;
 
 namespace DotnetSpider.Core.Pipeline
 {
@@ -7,21 +8,21 @@ namespace DotnetSpider.Core.Pipeline
 	/// </summary>
 	public class CollectionPipeline : BasePipeline, ICollectionPipeline
 	{
-		private readonly Dictionary<ISpider, List<ResultItems>> _items = new Dictionary<ISpider, List<ResultItems>>();
-		private readonly static object ItemsLocker = new object();
+		private readonly Dictionary<object, List<ResultItems>> _items = new Dictionary<object, List<ResultItems>>();
+		private static readonly object ItemsLocker = new object();
 
 		/// <summary>
 		/// 获取所有数据结果
 		/// </summary>
-		/// <param name="spider">爬虫</param>
+		/// <param name="owner">数据拥有者</param>
 		/// <returns>数据结果</returns>
-		public IEnumerable<ResultItems> GetCollection(ISpider spider)
+		public IList<ResultItems> GetCollection(dynamic owner)
 		{
 			lock (ItemsLocker)
 			{
-				if (_items.ContainsKey(spider))
+				if (_items.ContainsKey(owner))
 				{
-					return _items[spider];
+					return _items[owner];
 				}
 				else
 				{
@@ -34,17 +35,19 @@ namespace DotnetSpider.Core.Pipeline
 		/// 处理页面解析器解析到的数据结果
 		/// </summary>
 		/// <param name="resultItems">数据结果</param>
-		/// <param name="spider">爬虫</param>
-		public override void Process(IEnumerable<ResultItems> resultItems, ISpider spider)
+		/// <param name="logger">日志接口</param>
+		/// <param name="sender">调用方</param>
+		public override void Process(IList<ResultItems> resultItems, ILogger logger, dynamic sender = null)
 		{
+			var identity = GetIdentity(sender);
 			lock (ItemsLocker)
 			{
-				if (!_items.ContainsKey(spider))
+				if (!_items.ContainsKey(identity))
 				{
-					_items.Add(spider, new List<ResultItems>());
+					_items.Add(identity, new List<ResultItems>());
 				}
- 
-				_items[spider].AddRange(resultItems);
+
+				_items[identity].AddRange(resultItems);
 			}
 		}
 	}

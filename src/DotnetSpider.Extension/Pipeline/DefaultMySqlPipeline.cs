@@ -4,6 +4,7 @@ using DotnetSpider.Core;
 using System.Configuration;
 using DotnetSpider.Core.Infrastructure.Database;
 using DotnetSpider.Extension.Infrastructure;
+using DotnetSpider.Common;
 
 namespace DotnetSpider.Extension.Pipeline
 {
@@ -58,8 +59,9 @@ namespace DotnetSpider.Extension.Pipeline
 		/// 处理页面解析器解析到的数据结果
 		/// </summary>
 		/// <param name="resultItems">数据结果</param>
-		/// <param name="spider">爬虫</param>
-		public override void Process(IEnumerable<ResultItems> resultItems, ISpider spider)
+		/// <param name="logger">日志接口</param>
+		/// <param name="sender">调用方</param>
+		public override void Process(IList<ResultItems> resultItems, ILogger logger, dynamic sender = null)
 		{
 			var results = new List<dynamic>();
 			foreach (var resultItem in resultItems)
@@ -74,7 +76,6 @@ namespace DotnetSpider.Extension.Pipeline
 			using (var conn = ConnectionStringSettings.CreateDbConnection())
 			{
 				conn.MyExecute($"INSERT IGNORE `{Database}`.`{TableName}` (`url`, `title`, `html`) VALUES (@Url, @Title, @Html);", results);
-
 			}
 		}
 

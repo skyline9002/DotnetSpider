@@ -1,3 +1,4 @@
+using DotnetSpider.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,39 +8,37 @@ using System.Text;
 namespace DotnetSpider.Core.Pipeline
 {
 	/// <summary>
-	/// ´æ´¢Êı¾İ½á¹ûµ½ÎÄ¼şÖĞ
+	/// å­˜å‚¨æ•°æ®ç»“æœåˆ°æ–‡ä»¶ä¸­
 	/// </summary>
 	public class FilePipeline : BaseFilePipeline
 	{
 		/// <summary>
-		/// Êı¾İÎÄ¼ş¼ĞµØÖ·Îª: {BaseDirecoty}/data/{Identity}
+		/// æ•°æ®æ–‡ä»¶å¤¹åœ°å€ä¸º: {BaseDirecoty}/data/{Identity}
 		/// </summary>
 		public FilePipeline() : base("file")
 		{
 		}
 
 		/// <summary>
-		/// Êı¾İÎÄ¼ş¼ĞµØÖ·Îª: {BaseDirecoty}/data/{interval}
+		/// æ•°æ®æ–‡ä»¶å¤¹åœ°å€ä¸º: {BaseDirecoty}/data/{interval}
 		/// </summary>
 		public FilePipeline(string interval) : base(interval)
 		{
 		}
 
 		/// <summary>
-		/// ´æ´¢Êı¾İ½á¹ûµ½ÎÄ¼şÖĞ
+		/// å­˜å‚¨æ•°æ®ç»“æœåˆ°æ–‡ä»¶ä¸­
 		/// </summary>
-		/// <param name="resultItems">Êı¾İ½á¹û</param>
-		/// <param name="spider">ÅÀ³æ</param>
-		public override void Process(IEnumerable<ResultItems> resultItems, ISpider spider)
+		/// <param name="resultItems">æ•°æ®ç»“æœ</param>
+		/// <param name="logger">æ—¥å¿—æ¥å£</param>
+		/// <param name="sender">è°ƒç”¨æ–¹</param>
+		public override void Process(IList<ResultItems> resultItems, ILogger logger, dynamic sender = null)
 		{
 			try
 			{
 				foreach (var resultItem in resultItems)
 				{
-					resultItem.Request.CountOfResults = 0;
-					resultItem.Request.EffectedRows = 0;
-
-					string filePath = Path.Combine(GetDataFolder(spider), $"{ Guid.NewGuid():N}.dsd");
+					string filePath = Path.Combine(GetDataFolder(sender), $"{ Guid.NewGuid():N}.dsd");
 					using (StreamWriter printWriter = new StreamWriter(File.OpenWrite(filePath), Encoding.UTF8))
 					{
 						printWriter.WriteLine("url:\t" + resultItem.Request.Url);
@@ -54,24 +53,24 @@ namespace DotnetSpider.Core.Pipeline
 								{
 									printWriter.WriteLine(o);
 								}
+								resultItem.Request.AddCountOfResults(list.Count);
+								resultItem.Request.AddEffectedRows(list.Count);
 
-								resultItem.Request.CountOfResults += list.Count;
-								resultItem.Request.EffectedRows += list.Count;
 							}
 							else
 							{
 								printWriter.WriteLine(entry.Key + ":\t" + entry.Value);
 
-								resultItem.Request.CountOfResults += 1;
-								resultItem.Request.EffectedRows += 1;
+								resultItem.Request.AddCountOfResults(1);
+								resultItem.Request.AddEffectedRows(1);
 							}
 						}
 					}
 				}
 			}
-			catch
+			catch (Exception e)
 			{
-				spider.Logger.Error("Write file error.");
+				logger.Error($"Storage data to file failed: {e}.");
 				throw;
 			}
 		}

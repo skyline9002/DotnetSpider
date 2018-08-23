@@ -1,52 +1,48 @@
+using DotnetSpider.Common;
 using System;
 using System.Collections.Generic;
 
 namespace DotnetSpider.Core.Scheduler
 {
 	/// <summary>
-	/// URLµ÷¶È¶ÓÁĞ, ÊµÏÖ¹ã¶ÈÓÅ»¯»òÉî¶ÈÓÅ»¯²ßÂÔ, ÊµÏÖURLÈ¥ÖØ, ²¢ÇÒ¶ÓÁĞĞèÒª¿É±»¼à¿Ø
-	/// ¿¼ÂÇĞÔÄÜÔ­Òò, ¶ÓÁĞÃ»ÓĞºÍISpiderµÄ½âñî, Òò´ËÍ¬Ò»¸öScheduler²»ÄÜ±»²»Í¬µÄSpiderµÄÊ¹ÓÃ
+	/// URLè°ƒåº¦é˜Ÿåˆ—, å®ç°å¹¿åº¦ä¼˜åŒ–æˆ–æ·±åº¦ä¼˜åŒ–ç­–ç•¥, å®ç°URLå»é‡, å¹¶ä¸”é˜Ÿåˆ—éœ€è¦å¯è¢«ç›‘æ§
+	/// è€ƒè™‘æ€§èƒ½åŸå› , é˜Ÿåˆ—æ²¡æœ‰å’ŒISpiderçš„è§£è€¦, å› æ­¤åŒä¸€ä¸ªSchedulerä¸èƒ½è¢«ä¸åŒçš„Spiderçš„ä½¿ç”¨
 	/// </summary>
 	public interface IScheduler : IDisposable, IMonitorable
 	{
 		bool IsDistributed { get; }
 
 		/// <summary>
-		/// ÊÇ·ñÉî¶ÈÓÅÏÈ
+		/// æ˜¯å¦æ·±åº¦ä¼˜å…ˆ
 		/// </summary>
 		TraverseStrategy TraverseStrategy { get; set; }
 
 		/// <summary>
-		/// ±éÀúÉî¶È
+		/// éå†æ·±åº¦
 		/// </summary>
 		int Depth { get; set; }
 
 		/// <summary>
-		/// ³õÊ¼»¯¶ÓÁĞ
+		/// æ·»åŠ è¯·æ±‚å¯¹è±¡åˆ°é˜Ÿåˆ—
 		/// </summary>
-		/// <param name="spider">ÅÀ³æ¶ÔÏó</param>
-		void Init(ISpider spider);
+		/// <param name="request">è¯·æ±‚å¯¹è±¡</param>
+		/// <param name="shouldReserved">ç”±å„è‡ªçš„ä¸šåŠ¡é€»è¾‘æ¥ç¡®å®šæ˜¯å¦éœ€è¦é‡è¯•</param>
+		void Push(Request request, Func<Request, bool> shouldReserved);
 
 		/// <summary>
-		/// Ìí¼ÓÇëÇó¶ÔÏóµ½¶ÓÁĞ
+		/// å–å¾—ä¸€ä¸ªéœ€è¦å¤„ç†çš„è¯·æ±‚å¯¹è±¡
 		/// </summary>
-		/// <param name="request">ÇëÇó¶ÔÏó</param>
-		void Push(Request request);
-
-		/// <summary>
-		/// È¡µÃÒ»¸öĞèÒª´¦ÀíµÄÇëÇó¶ÔÏó
-		/// </summary>
-		/// <returns>ÇëÇó¶ÔÏó</returns>
+		/// <returns>è¯·æ±‚å¯¹è±¡</returns>
 		Request Poll();
 
 		/// <summary>
-		/// ÅúÁ¿µ¼Èë
+		/// æ‰¹é‡å¯¼å…¥
 		/// </summary>
-		/// <param name="requests">ÇëÇó¶ÔÏó</param>
-		void Import(IEnumerable<Request> requests);
+		/// <param name="requests">è¯·æ±‚å¯¹è±¡</param>
+		void Reload(ICollection<Request> requests);
 
 		/// <summary>
-		/// µ¼³öÕû¸ö¶ÓÁĞ
+		/// å¯¼å‡ºæ•´ä¸ªé˜Ÿåˆ—
 		/// </summary>
 		void Export();
 	}

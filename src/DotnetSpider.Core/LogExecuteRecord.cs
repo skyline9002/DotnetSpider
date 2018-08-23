@@ -1,4 +1,4 @@
-﻿using Serilog;
+﻿using DotnetSpider.Common;
 
 namespace DotnetSpider.Core
 {
@@ -7,7 +7,12 @@ namespace DotnetSpider.Core
 	/// </summary>
 	public class LogExecuteRecord : IExecuteRecord
 	{
-		public ILogger Logger { get; set; }
+		private readonly ILogger _logger;
+
+		public LogExecuteRecord(ILogger logger)
+		{
+			_logger = logger ?? throw new SpiderException($"{nameof(logger)} should not be null.");
+		}
 
 		/// <summary>
 		/// 添加运行记录
@@ -22,10 +27,10 @@ namespace DotnetSpider.Core
 			{
 				return true;
 			}
-			Logger?.Information($"Execute task {taskId}, name {name}, identity {identity}.", identity);
+			var msg = string.IsNullOrWhiteSpace(name) ? $"Execute task {taskId}, identity {identity}." : $"Execute task {taskId}, name {name}, identity {identity}.";
+			_logger.Information(msg, identity);
 			return true;
 		}
-
 
 		/// <summary>
 		/// 删除运行记录
@@ -39,7 +44,8 @@ namespace DotnetSpider.Core
 			{
 				return;
 			}
-			Logger?.Information($"Complete task {taskId}, name {name}, identity {identity}.", identity);
+			var msg = string.IsNullOrWhiteSpace(name) ? $"Finish task {taskId}, identity {identity}." : $"Finish task {taskId}, name {name}, identity {identity}.";
+			_logger.Information(msg, identity);
 		}
 	}
 }
